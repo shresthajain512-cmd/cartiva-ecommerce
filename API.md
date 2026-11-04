@@ -29,28 +29,105 @@ This document specifies the REST API endpoints for Cartiva, describing HTTP meth
 
 ## 🔐 1. Authentication Endpoints (`/api/auth`)
 
-### 1.1 Register New Customer
+### 1.1 Register User (Customer or Seller)
 - **Method & Route:** `POST /api/auth/register`
 - **Access:** Public
-- **Request Body:**
+
+#### Customer Registration Request:
+```json
+{
+  "name": "Alice Customer",
+  "email": "alice@example.com",
+  "password": "SecurePassword123"
+}
+```
+
+#### Customer Registration Success Response (`201 Created`):
+```json
+{
+  "success": true,
+  "message": "Customer registered successfully",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5c...",
+  "user": {
+    "id": "6727a8bc9d1e2f0012345678",
+    "name": "Alice Customer",
+    "email": "alice@example.com",
+    "role": "customer",
+    "createdAt": "2026-11-05T00:15:00.000Z"
+  }
+}
+```
+
+#### Seller Registration Request:
+```json
+{
+  "name": "Bob Seller",
+  "businessName": "Bob Tech Store",
+  "email": "bob@example.com",
+  "password": "SecurePassword123",
+  "role": "seller"
+}
+```
+
+#### Seller Registration Success Response (`201 Created`):
+```json
+{
+  "success": true,
+  "message": "Seller account registered successfully and is pending approval",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5c...",
+  "user": {
+    "id": "6727a8bc9d1e2f0012345679",
+    "name": "Bob Seller",
+    "email": "bob@example.com",
+    "role": "seller",
+    "businessName": "Bob Tech Store",
+    "sellerApprovalStatus": "pending",
+    "createdAt": "2026-11-05T00:15:00.000Z"
+  }
+}
+```
+
+#### Error Responses (`400 Bad Request`):
+- **Missing Required Field:**
   ```json
   {
-    "name": "Jane Doe",
-    "email": "jane@example.com",
-    "password": "securePassword123"
+    "success": false,
+    "message": "Please provide your full name"
   }
   ```
-- **Success Response (`201 Created`):**
+- **Missing Business Name for Seller:**
   ```json
   {
-    "success": true,
-    "token": "eyJhbGciOiJIUzI1NiIsInR5c...",
-    "user": {
-      "id": "6727a8bc9d1e2f0012345678",
-      "name": "Jane Doe",
-      "email": "jane@example.com",
-      "role": "customer"
-    }
+    "success": false,
+    "message": "Business name is required for seller registration"
+  }
+  ```
+- **Invalid Email Format:**
+  ```json
+  {
+    "success": false,
+    "message": "Please provide a valid email address"
+  }
+  ```
+- **Weak Password:**
+  ```json
+  {
+    "success": false,
+    "message": "Password must be at least 6 characters long"
+  }
+  ```
+- **Duplicate Email:**
+  ```json
+  {
+    "success": false,
+    "message": "An account with this email already exists"
+  }
+  ```
+- **Disallowed Admin Role:**
+  ```json
+  {
+    "success": false,
+    "message": "Admin registration is not permitted via public registration"
   }
   ```
 

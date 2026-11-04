@@ -34,7 +34,9 @@ erDiagram
         string name "required, trim, max 50"
         string email UK "required, lowercase, unique"
         string password "hashed, select: false"
-        string role "customer | admin"
+        string role "customer | seller | admin"
+        string businessName "required if seller, max 100"
+        string sellerApprovalStatus "pending | approved | rejected"
         date createdAt
         date updatedAt
     }
@@ -112,7 +114,7 @@ userSchema.pre('save', async function (next) {
 
 ## 🗂️ 1. User Model (`User.js`)
 
-Manages accounts for both **Customers** and **Admins** using Role-Based Access Control (`role`).
+Manages accounts for **Customers**, **Sellers**, and **Admins** using Role-Based Access Control (`role`).
 
 ```javascript
 const userSchema = new mongoose.Schema(
@@ -143,10 +145,32 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
       enum: {
-        values: ['customer', 'admin'],
+        values: ['customer', 'seller', 'admin'],
         message: '{VALUE} is not a valid role'
       },
       default: 'customer'
+    },
+    // Seller-specific fields for multi-vendor marketplace
+    businessName: {
+      type: String,
+      trim: true,
+      maxlength: [100, 'Business name cannot exceed 100 characters'],
+      required: [
+        function () {
+          return this.role === 'seller';
+        },
+        'Business name is required for seller registration'
+      ]
+    },
+    sellerApprovalStatus: {
+      type: String,
+      enum: {
+        values: ['pending', 'approved', 'rejected'],
+        message: '{VALUE} is not a valid seller approval status'
+      },
+      default: function () {
+        return this.role === 'seller' ? 'pending' : undefined;
+      }
     }
   },
   {
@@ -159,10 +183,12 @@ const userSchema = new mongoose.Schema(
 | Field | Type | Constraints & Validations | Purpose |
 | :--- | :--- | :--- | :--- |
 | `_id` | `ObjectId` | Auto-generated Primary Key | Unique document identifier. |
-| `name` | `String` | `required`, `trim`, `maxlength: 50` | Full name of user. |
+| `name` | `String` | `required`, `trim`, `maxlength: 50` | Full name of user or business owner. |
 | `email` | `String` | `required`, `unique`, `lowercase`, regex check | User identity & login handle. |
 | `password` | `String` | `required`, `minlength: 6`, `select: false` | Hashed bcrypt string. |
-| `role` | `String` | `enum: ['customer', 'admin']`, default: `'customer'` | Controls authorization permissions. |
+| `role` | `String` | `enum: ['customer', 'seller', 'admin']`, default: `'customer'` | Controls authorization permissions. |
+| `businessName` | `String` | `required if role === 'seller'`, `trim`, max 100 | Storefront / business name for marketplace sellers. |
+| `sellerApprovalStatus` | `String` | `enum: ['pending', 'approved', 'rejected']` | Admin moderation status for seller onboarding. |
 | `timestamps` | `Date` | Managed automatically by Mongoose | `createdAt` & `updatedAt`. |
 
 ---

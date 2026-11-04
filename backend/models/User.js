@@ -24,12 +24,37 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Please provide a password'],
       minlength: [6, 'Password must be at least 6 characters long'],
-      select: false // Do not return password by default in queries
+      select: false // Excluded from query results by default
     },
     role: {
       type: String,
-      enum: ['customer', 'admin'],
+      enum: {
+        values: ['customer', 'seller', 'admin'],
+        message: '{VALUE} is not a valid role'
+      },
       default: 'customer'
+    },
+    // Seller-specific fields for multi-vendor marketplace
+    businessName: {
+      type: String,
+      trim: true,
+      maxlength: [100, 'Business name cannot exceed 100 characters'],
+      required: [
+        function () {
+          return this.role === 'seller';
+        },
+        'Business name is required for seller registration'
+      ]
+    },
+    sellerApprovalStatus: {
+      type: String,
+      enum: {
+        values: ['pending', 'approved', 'rejected'],
+        message: '{VALUE} is not a valid seller approval status'
+      },
+      default: function () {
+        return this.role === 'seller' ? 'pending' : undefined;
+      }
     }
   },
   {
@@ -37,7 +62,7 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// Pre-save hook: Hash password before saving to the database
+// Pre-save hook: Hash password using bcrypt before saving to MongoDB
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) {
     return next();
@@ -47,7 +72,7 @@ userSchema.pre('save', async function (next) {
   next();
 });
 
-// Instance method: Compare entered password with hashed password in database
+// Instance method: Securely compare entered password with hashed password in database
 userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };

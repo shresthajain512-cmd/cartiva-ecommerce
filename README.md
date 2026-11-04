@@ -66,9 +66,11 @@ For full specifications and role permissions, refer to [FEATURES.md](./FEATURES.
   - Mongoose models ([SCHEMA.md](./SCHEMA.md)), REST endpoint contracts ([API.md](./API.md)), and UI Wireframes ([WIREFRAMES.md](./docs/WIREFRAMES.md)).
 - ✅ **Day 3: Backend Setup & Server Implementation** *(Complete)*
   - Node.js/Express server scaffolding, Mongoose models, error handling, graceful shutdown, and `/health` API endpoint.
-- ⏳ **Day 4+: Frontend Architecture & UI Components**
+- ✅ **Day 4: Secure User Registration API** *(Complete)*
+  - Customer & Seller registration (`POST /api/auth/register`), input sanitization, duplicate email protection, salted bcrypt hashing, and admin registration protection.
+- ⏳ **Day 5+: Frontend Architecture & UI Components**
   - React setup, component hierarchy, product grid, details view, and persistent cart.
-- ⏳ **Day 5+: Client-Server Integration, Auth & Test Checkout**
+- ⏳ **Day 6+: Client-Server Integration, Auth & Test Checkout**
   - Connecting React to Express API, JWT state handling, test checkout simulation, and deployment.
 
 ---
