@@ -62,8 +62,8 @@ For full specifications and role permissions, refer to [FEATURES.md](./FEATURES.
 
 - ✅ **Day 1: Project Planning & Architecture Scope** *(Complete)*
   - Problem statement, user roles (Customer & Admin), 10 MVP features, and stack selection.
-- ✅ **Day 2: Database Schema & API Route Design** *(Complete)*
-  - Mongoose models ([SCHEMA.md](./SCHEMA.md)) and REST endpoint contracts ([API.md](./API.md)).
+- ✅ **Day 2: Database Schema, API Design & UI Wireframes** *(Complete)*
+  - Mongoose models ([SCHEMA.md](./SCHEMA.md)), REST endpoint contracts ([API.md](./API.md)), and UI Wireframes ([WIREFRAMES.md](./docs/WIREFRAMES.md)).
 - ⏳ **Day 3+: Backend Setup & Server Scaffolding**
   - Node.js/Express project initialization, MongoDB Atlas/Local connection, and route handlers.
 - ⏳ **Day 4+: Frontend Architecture & UI Components**
@@ -76,5 +76,6 @@ For full specifications and role permissions, refer to [FEATURES.md](./FEATURES.
 ## 📖 Related Documents
 
 - [FEATURES.md](./FEATURES.md) — Detailed breakdown of user roles, the 10 MVP features with priorities, and future enhancements.
-- [SCHEMA.md](./SCHEMA.md) — Database design, Mongoose schemas, and data relationships.
+- [SCHEMA.md](./SCHEMA.md) — Complete database design for Users, Products, Cart, and Orders with Mongoose.
 - [API.md](./API.md) — RESTful API endpoint specifications and payload contracts.
+- [WIREFRAMES.md](./docs/WIREFRAMES.md) — UI wireframes and responsive layouts for Login/Signup, Catalogue, Details, and Admin Dashboard.
