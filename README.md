@@ -64,12 +64,68 @@ For full specifications and role permissions, refer to [FEATURES.md](./FEATURES.
   - Problem statement, user roles (Customer & Admin), 10 MVP features, and stack selection.
 - ✅ **Day 2: Database Schema, API Design & UI Wireframes** *(Complete)*
   - Mongoose models ([SCHEMA.md](./SCHEMA.md)), REST endpoint contracts ([API.md](./API.md)), and UI Wireframes ([WIREFRAMES.md](./docs/WIREFRAMES.md)).
-- ⏳ **Day 3+: Backend Setup & Server Scaffolding**
-  - Node.js/Express project initialization, MongoDB Atlas/Local connection, and route handlers.
+- ✅ **Day 3: Backend Setup & Server Implementation** *(Complete)*
+  - Node.js/Express server scaffolding, Mongoose models, error handling, graceful shutdown, and `/health` API endpoint.
 - ⏳ **Day 4+: Frontend Architecture & UI Components**
   - React setup, component hierarchy, product grid, details view, and persistent cart.
 - ⏳ **Day 5+: Client-Server Integration, Auth & Test Checkout**
   - Connecting React to Express API, JWT state handling, test checkout simulation, and deployment.
+
+---
+
+## ⚙️ Backend Setup & Running Locally
+
+### 1. Prerequisites
+- **Node.js**: v18.0.0 or newer
+- **npm**: v9.0.0 or newer
+- **MongoDB**: Local MongoDB instance (running on port `27017`) or a free [MongoDB Atlas](https://www.mongodb.com/atlas) cluster URI.
+
+### 2. Configure Environment Variables
+Copy the example configuration to create your local `.env`:
+```bash
+cp backend/.env.example backend/.env
+```
+Default configuration values in `backend/.env`:
+- `PORT=5001` *(Defaulted to 5001 to avoid Apple AirPlay receiver conflicts on port 5000)*
+- `NODE_ENV=development`
+- `MONGO_URI=mongodb://localhost:27017/cartiva` *(or your MongoDB Atlas connection string)*
+- `JWT_SECRET=cartiva_super_secret_jwt_key_2026_dev_mode`
+- `JWT_EXPIRE=30d`
+
+### 3. Install Dependencies
+```bash
+cd backend
+npm install
+```
+
+### 4. Run the Backend Server
+- **Development Mode (with auto-reload):**
+  ```bash
+  npm run dev
+  ```
+- **Production Mode:**
+  ```bash
+  npm start
+  ```
+
+### 5. Verify Server Health
+Visit `http://localhost:5001/health` in your browser or run:
+```bash
+curl http://localhost:5001/health
+```
+Expected response:
+```json
+{
+  "status": "ok",
+  "message": "Cartiva Backend Server is running healthy 🚀",
+  "uptime": "20s",
+  "environment": "development",
+  "database": {
+    "status": "disconnected",
+    "connected": false
+  }
+}
+```
 
 ---
 
