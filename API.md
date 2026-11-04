@@ -131,44 +131,179 @@ This document specifies the REST API endpoints for Cartiva, describing HTTP meth
   }
   ```
 
-### 1.2 User Login (Customer / Admin)
+### 1.2 User Login (Customer / Seller / Admin)
 - **Method & Route:** `POST /api/auth/login`
 - **Access:** Public
-- **Request Body:**
+
+#### Customer Login Request:
+```json
+{
+  "email": "alice@example.com",
+  "password": "SecurePassword123"
+}
+```
+
+#### Customer Login Success Response (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Login successful",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ey...",
+  "user": {
+    "id": "6727a8bc9d1e2f0012345678",
+    "name": "Alice Customer",
+    "email": "alice@example.com",
+    "role": "customer",
+    "createdAt": "2026-11-05T00:15:00.000Z"
+  }
+}
+```
+
+#### Seller Login Request:
+```json
+{
+  "email": "bob@example.com",
+  "password": "SecurePassword123"
+}
+```
+
+#### Seller Login Success Response (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Login successful",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ey...",
+  "user": {
+    "id": "6727a8bc9d1e2f0012345679",
+    "name": "Bob Seller",
+    "email": "bob@example.com",
+    "role": "seller",
+    "businessName": "Bob Electronics & Gadgets",
+    "sellerApprovalStatus": "approved",
+    "createdAt": "2026-11-05T00:15:00.000Z"
+  }
+}
+```
+
+#### Error Responses for Login:
+- **Missing Email or Password (`400 Bad Request`):**
   ```json
   {
-    "email": "jane@example.com",
-    "password": "securePassword123"
+    "success": false,
+    "message": "Please provide an email and password"
   }
   ```
+- **Invalid Credentials - Wrong Password or Unknown Email (`401 Unauthorized`):**
+  *(Note: A generic message is deliberately used to prevent user enumeration attacks)*
+  ```json
+  {
+    "success": false,
+    "message": "Invalid email or password"
+  }
+  ```
+
+---
+
+### 1.3 JWT Authentication & Protected Routes
+
+All protected routes require sending the JWT access token in the HTTP `Authorization` request header:
+```http
+Authorization: Bearer <your_jwt_token_here>
+```
+
+#### JWT Middleware Authentication Errors (`401 Unauthorized`):
+- **Missing Token:**
+  ```json
+  {
+    "success": false,
+    "message": "Not authorized to access this route. Missing token."
+  }
+  ```
+- **Malformed / Tampered Token:**
+  ```json
+  {
+    "success": false,
+    "message": "Not authorized. Invalid token signature."
+  }
+  ```
+- **Expired Token:**
+  ```json
+  {
+    "success": false,
+    "message": "Not authorized. Token has expired, please log in again."
+  }
+  ```
+
+---
+
+### 1.4 Get Current User Profile (Any Authenticated User)
+- **Method & Route:** `GET /api/auth/profile`
+- **Access:** Protected (`customer`, `seller`, `admin`)
+- **Headers:** `Authorization: Bearer <JWT_TOKEN>`
 - **Success Response (`200 OK`):**
   ```json
   {
     "success": true,
-    "token": "eyJhbGciOiJIUzI1NiIsInR5c...",
     "user": {
       "id": "6727a8bc9d1e2f0012345678",
-      "name": "Jane Doe",
-      "email": "jane@example.com",
-      "role": "customer"
+      "name": "Alice Customer",
+      "email": "alice@example.com",
+      "role": "customer",
+      "createdAt": "2026-11-05T00:15:00.000Z"
     }
   }
   ```
 
-### 1.3 Get Current User Profile
-- **Method & Route:** `GET /api/auth/profile`
-- **Access:** Protected (Logged-in User)
-- **Headers:** `Authorization: Bearer <TOKEN>`
+---
+
+### 1.5 Seller Dashboard & Storefront Management
+- **Method & Route:** `GET /api/auth/seller/dashboard`
+- **Access:** Protected (`approved` sellers only)
+- **Headers:** `Authorization: Bearer <JWT_TOKEN>`
 - **Success Response (`200 OK`):**
   ```json
   {
     "success": true,
-    "user": {
-      "id": "6727a8bc9d1e2f0012345678",
-      "name": "Jane Doe",
-      "email": "jane@example.com",
-      "role": "customer"
+    "message": "Welcome to your seller dashboard",
+    "storefront": {
+      "businessName": "Bob Electronics & Gadgets",
+      "approvalStatus": "approved"
     }
+  }
+  ```
+- **Forbidden - Non-Seller Role (`403 Forbidden`):**
+  ```json
+  {
+    "success": false,
+    "message": "User role 'customer' is not authorized to access this route"
+  }
+  ```
+- **Forbidden - Pending Seller (`403 Forbidden`):**
+  ```json
+  {
+    "success": false,
+    "message": "Seller storefront is pending approval. You cannot publish products or manage orders yet."
+  }
+  ```
+
+---
+
+### 1.6 Administrator Dashboard
+- **Method & Route:** `GET /api/auth/admin/dashboard`
+- **Access:** Protected (`admin` role only)
+- **Headers:** `Authorization: Bearer <JWT_TOKEN>`
+- **Success Response (`200 OK`):**
+  ```json
+  {
+    "success": true,
+    "message": "Welcome to Cartiva Admin Control Panel"
+  }
+  ```
+- **Forbidden - Non-Admin User (`403 Forbidden`):**
+  ```json
+  {
+    "success": false,
+    "message": "Access denied. Administrator privileges required."
   }
   ```
 

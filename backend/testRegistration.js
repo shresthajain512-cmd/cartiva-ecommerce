@@ -3,12 +3,25 @@
  * Tests both Customer and Seller registration, validations, and security rules.
  */
 
+const mongoose = require('mongoose');
+const dotenv = require('dotenv');
+dotenv.config({ path: __dirname + '/.env' });
+const User = require('./models/User');
+
 const BASE_URL = 'http://localhost:5001/api/auth/register';
 
 const runTests = async () => {
   console.log('\n======================================================');
   console.log('🧪 CARTIVA DAY 4: SECURE USER REGISTRATION TEST SUITE');
   console.log('======================================================\n');
+
+  try {
+    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/cartiva');
+    await User.deleteMany({ email: { $in: ['alice@example.com', 'bob@example.com', 'dave@example.com', 'eve@example.com'] } });
+    await mongoose.disconnect();
+  } catch (err) {
+    console.error('Warning: DB cleanup before test failed:', err.message);
+  }
 
   let passedCount = 0;
   let totalCount = 0;

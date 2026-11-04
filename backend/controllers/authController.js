@@ -164,7 +164,8 @@ const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password) {
+    // Validate required fields
+    if (!email || typeof email !== 'string' || !email.trim() || !password || typeof password !== 'string') {
       return res.status(400).json({
         success: false,
         message: 'Please provide email and password'
@@ -172,9 +173,10 @@ const loginUser = async (req, res) => {
     }
 
     const normalizedEmail = email.toLowerCase().trim();
-    // Find user by email and explicitly include password field for comparison
+    // Find user by normalized email and explicitly include password field for comparison
     const user = await User.findOne({ email: normalizedEmail }).select('+password');
 
+    // Generic error for invalid credentials prevents account enumeration attacks
     if (!user || !(await user.matchPassword(password))) {
       return res.status(401).json({
         success: false,
@@ -186,7 +188,8 @@ const loginUser = async (req, res) => {
       id: user._id,
       name: user.name,
       email: user.email,
-      role: user.role
+      role: user.role,
+      createdAt: user.createdAt
     };
 
     if (user.role === 'seller') {
@@ -196,6 +199,7 @@ const loginUser = async (req, res) => {
 
     res.status(200).json({
       success: true,
+      message: 'Login successful',
       token: generateToken(user._id),
       user: responsePayload
     });

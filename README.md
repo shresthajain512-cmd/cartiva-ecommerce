@@ -68,10 +68,12 @@ For full specifications and role permissions, refer to [FEATURES.md](./FEATURES.
   - Node.js/Express server scaffolding, Mongoose models, error handling, graceful shutdown, and `/health` API endpoint.
 - ✅ **Day 4: Secure User Registration API** *(Complete)*
   - Customer & Seller registration (`POST /api/auth/register`), input sanitization, duplicate email protection, salted bcrypt hashing, and admin registration protection.
-- ⏳ **Day 5+: Frontend Architecture & UI Components**
+- ✅ **Day 5: Login API, JWT Authentication & Role-Based Authorization** *(Complete)*
+  - Secure login (`POST /api/auth/login`), email normalization, constant-time bcrypt verification, signed JSON Web Tokens (`jwt.sign`), HTTP Bearer middleware verification (`protect`), role guards (`authorize`), approved storefront status checks (`approvedSellerOnly`), and admin access guards (`adminOnly`).
+- ⏳ **Day 6+: Product Catalogue & Category Management**
+  - Product model, multi-vendor catalogue listing, seller product publishing, and inventory tracking.
+- ⏳ **Day 7+: Frontend Architecture & UI Components**
   - React setup, component hierarchy, product grid, details view, and persistent cart.
-- ⏳ **Day 6+: Client-Server Integration, Auth & Test Checkout**
-  - Connecting React to Express API, JWT state handling, test checkout simulation, and deployment.
 
 ---
 
