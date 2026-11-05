@@ -3,7 +3,11 @@ const User = require('../models/User');
 
 // Helper to generate a signed JWT
 const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET || 'cartiva_dev_secret_key', {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT configuration error: JWT_SECRET environment variable is missing');
+  }
+  return jwt.sign({ id }, secret, {
     expiresIn: process.env.JWT_EXPIRE || '30d'
   });
 };
@@ -165,14 +169,30 @@ const loginUser = async (req, res) => {
     const { email, password } = req.body;
 
     // Validate required fields
-    if (!email || typeof email !== 'string' || !email.trim() || !password || typeof password !== 'string') {
+    if (!email || typeof email !== 'string' || !email.trim()) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide email and password'
+        message: 'Please provide an email address'
+      });
+    }
+
+    if (!password || typeof password !== 'string' || !password.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a password'
       });
     }
 
     const normalizedEmail = email.toLowerCase().trim();
+
+    // Validate email format
+    if (!EMAIL_REGEX.test(normalizedEmail)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid email address'
+      });
+    }
+
     // Find user by normalized email and explicitly include password field for comparison
     const user = await User.findOne({ email: normalizedEmail }).select('+password');
 

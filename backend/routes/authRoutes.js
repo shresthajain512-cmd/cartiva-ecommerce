@@ -32,6 +32,15 @@ router.get('/seller/dashboard', protect, approvedSellerOnly, (req, res) => {
   });
 });
 
+// 4. Protected Seller Product Management Route (Approved Sellers Only)
+router.get('/seller/products', protect, approvedSellerOnly, (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Seller product management portal accessible',
+    storefront: req.user.businessName
+  });
+});
+
 // 4. Protected Admin Portal (Admin Only)
 router.get('/admin/dashboard', protect, adminOnly, (req, res) => {
   res.status(200).json({

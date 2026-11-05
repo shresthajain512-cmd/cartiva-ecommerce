@@ -36,7 +36,7 @@ erDiagram
         string password "hashed, select: false"
         string role "customer | seller | admin"
         string businessName "required if seller, max 100"
-        string sellerApprovalStatus "pending | approved | rejected"
+        string sellerApprovalStatus "pending | approved | rejected | suspended"
         date createdAt
         date updatedAt
     }
@@ -188,33 +188,33 @@ const userSchema = new mongoose.Schema(
 | `password` | `String` | `required`, `minlength: 6`, `select: false` | Hashed bcrypt string. |
 | `role` | `String` | `enum: ['customer', 'seller', 'admin']`, default: `'customer'` | Controls authorization permissions. |
 | `businessName` | `String` | `required if role === 'seller'`, `trim`, max 100 | Storefront / business name for marketplace sellers. |
-| `sellerApprovalStatus` | `String` | `enum: ['pending', 'approved', 'rejected']` | Admin moderation status for seller onboarding. |
+| `sellerApprovalStatus` | `String` | `enum: ['pending', 'approved', 'rejected', 'suspended']` | Admin moderation status for seller onboarding. |
 | `timestamps` | `Date` | Managed automatically by Mongoose | `createdAt` & `updatedAt`. |
 
 ---
 
 ## 🛍️ 2. Product Model (`Product.js`)
 
-Defines the products displayed in the customer catalogue and managed by store administrators.
+Defines the products displayed in the multi-vendor customer catalogue and managed by approved sellers and administrators.
 
 ```javascript
 const productSchema = new mongoose.Schema(
   {
     title: {
       type: String,
-      required: [true, 'Please enter product title'],
+      required: [true, 'Please provide a product title'],
       trim: true,
       maxlength: [120, 'Title cannot exceed 120 characters']
     },
     description: {
       type: String,
-      required: [true, 'Please enter product description'],
+      required: [true, 'Please provide a product description'],
       trim: true,
       maxlength: [2000, 'Description cannot exceed 2000 characters']
     },
     price: {
       type: Number,
-      required: [true, 'Please enter product price'],
+      required: [true, 'Please provide a product price'],
       min: [0, 'Price must be a positive number']
     },
     category: {
@@ -222,44 +222,76 @@ const productSchema = new mongoose.Schema(
       required: [true, 'Please assign a category'],
       enum: {
         values: ['Electronics', 'Fashion', 'Home & Kitchen', 'Books', 'Fitness', 'Other'],
-        message: '{VALUE} is not an allowed category'
+        message: '{VALUE} is not a valid category'
       },
       default: 'Other'
     },
     imageUrl: {
       type: String,
       required: [true, 'Please provide a product image URL'],
-      trim: true
+      trim: true,
+      default: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30'
     },
     stockCount: {
       type: Number,
-      required: [true, 'Please specify stock quantity'],
+      required: [true, 'Please specify available stock count'],
       min: [0, 'Stock count cannot be negative'],
+      validate: {
+        validator: Number.isInteger,
+        message: '{VALUE} is not an integer value for stock count'
+      },
       default: 0
+    },
+    seller: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: [true, 'Product must belong to a seller'],
+      index: true
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true // Foreign key pointing to Admin User
+      ref: 'User'
+    },
+    storeName: {
+      type: String,
+      trim: true,
+      maxlength: [100, 'Store name cannot exceed 100 characters']
+    },
+    isPublished: {
+      type: Boolean,
+      default: true,
+      index: true
+    },
+    isArchived: {
+      type: Boolean,
+      default: false,
+      index: true
     }
   },
   {
     timestamps: true
   }
 );
+
+productSchema.index({ seller: 1, isArchived: 1, createdAt: -1 });
+productSchema.index({ isPublished: 1, isArchived: 1, category: 1, createdAt: -1 });
+productSchema.index({ title: 'text', description: 'text' });
 ```
 
 ### Field Breakdown:
 | Field | Type | Constraints & Validations | Purpose |
 | :--- | :--- | :--- | :--- |
 | `title` | `String` | `required`, `trim`, `maxlength: 120` | Name of the product. |
-| `description`| `String` | `required`, `maxlength: 2000` | Full details, specifications, and features. |
-| `price` | `Number` | `required`, `min: 0` | Price in standard currency units (INR ₹). |
+| `description`| `String` | `required`, `trim`, `maxlength: 2000` | Full details, specifications, and features. |
+| `price` | `Number` | `required`, `min: 0`, finite number | Price in standard currency units (INR ₹). |
 | `category` | `String` | `enum`, `required`, default: `'Other'` | Categorization for filtering. |
 | `imageUrl` | `String` | `required`, `trim` | High-resolution image link for display. |
-| `stockCount` | `Number` | `required`, `min: 0`, default: `0` | Available inventory tracking. |
-| `createdBy` | `ObjectId` | Reference `ref: 'User'`, `required` | Admin provenance tracking. |
-| `timestamps` | `Date` | Managed automatically by Mongoose | Catalog audit tracking. |
+| `stockCount` | `Number` | `required`, `min: 0`, integer check, default: `0` | Real-time inventory tracking. |
+| `seller` | `ObjectId` | Reference `ref: 'User'`, `required`, indexed | Owner approved seller who published the product. |
+| `storeName` | `String` | `trim`, max 100 | Denormalized storefront name for fast rendering. |
+| `isPublished` | `Boolean` | `default: true`, indexed | Storefront visibility toggle for seller. |
+| `isArchived` | `Boolean` | `default: false`, indexed | Soft deletion flag preserving order history integrity. |
+| `timestamps` | `Date` | Managed automatically by Mongoose | Catalog audit tracking (`createdAt` & `updatedAt`). |
 
 ---
 

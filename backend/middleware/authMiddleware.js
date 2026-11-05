@@ -23,8 +23,16 @@ const protect = async (req, res, next) => {
         });
       }
 
+      const secret = process.env.JWT_SECRET;
+      if (!secret) {
+        return res.status(500).json({
+          success: false,
+          message: 'Server error: JWT configuration missing'
+        });
+      }
+
       // Verify JWT signature and expiration
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'cartiva_dev_secret_key');
+      const decoded = jwt.verify(token, secret);
 
       // Fetch user from DB (excluding password) to guarantee live credentials and roles
       req.user = await User.findById(decoded.id).select('-password');
@@ -89,7 +97,7 @@ const authorize = (...roles) => {
 
 /**
  * Middleware for approved sellers only
- * Rejects non-sellers as well as pending or rejected sellers
+ * Rejects non-sellers as well as pending, rejected, or suspended sellers
  */
 const approvedSellerOnly = (req, res, next) => {
   if (!req.user) {
@@ -106,6 +114,27 @@ const approvedSellerOnly = (req, res, next) => {
     });
   }
 
+  if (req.user.sellerApprovalStatus === 'pending') {
+    return res.status(403).json({
+      success: false,
+      message: 'Access denied: Seller storefront is pending approval. You cannot publish products or manage orders yet.'
+    });
+  }
+
+  if (req.user.sellerApprovalStatus === 'rejected') {
+    return res.status(403).json({
+      success: false,
+      message: 'Access denied: Seller account has been rejected. You cannot access seller management features.'
+    });
+  }
+
+  if (req.user.sellerApprovalStatus === 'suspended') {
+    return res.status(403).json({
+      success: false,
+      message: 'Access denied: Seller account has been suspended. You cannot access seller management features.'
+    });
+  }
+
   if (req.user.sellerApprovalStatus !== 'approved') {
     return res.status(403).json({
       success: false,
@@ -114,6 +143,60 @@ const approvedSellerOnly = (req, res, next) => {
   }
 
   next();
+};
+
+/**
+ * Middleware for approved sellers or admin users
+ * Allows approved sellers or admins through; rejects customers and unapproved sellers
+ */
+const approvedSellerOrAdmin = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Not authorized, user authentication required'
+    });
+  }
+
+  if (req.user.role === 'admin') {
+    return next();
+  }
+
+  if (req.user.role === 'seller') {
+    if (req.user.sellerApprovalStatus === 'pending') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: Seller storefront is pending approval. You cannot publish products or manage orders yet.'
+      });
+    }
+
+    if (req.user.sellerApprovalStatus === 'rejected') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: Seller account has been rejected. You cannot access seller management features.'
+      });
+    }
+
+    if (req.user.sellerApprovalStatus === 'suspended') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: Seller account has been suspended. You cannot access seller management features.'
+      });
+    }
+
+    if (req.user.sellerApprovalStatus !== 'approved') {
+      return res.status(403).json({
+        success: false,
+        message: `Access denied: Seller account is currently ${req.user.sellerApprovalStatus || 'pending'} approval`
+      });
+    }
+
+    return next();
+  }
+
+  return res.status(403).json({
+    success: false,
+    message: `Access denied: Seller account or Admin privileges required (current role: '${req.user.role}')`
+  });
 };
 
 /**
@@ -134,5 +217,6 @@ module.exports = {
   protect,
   authorize,
   approvedSellerOnly,
+  approvedSellerOrAdmin,
   adminOnly
 };

@@ -93,7 +93,7 @@ Default configuration values in `backend/.env`:
 - `PORT=5001` *(Defaulted to 5001 to avoid Apple AirPlay receiver conflicts on port 5000)*
 - `NODE_ENV=development`
 - `MONGO_URI=mongodb://localhost:27017/cartiva` *(or your MongoDB Atlas connection string)*
-- `JWT_SECRET=cartiva_super_secret_jwt_key_2026_dev_mode`
+- `JWT_SECRET=your_jwt_secret_key_here` *(placeholder: replace with your secure secret)*
 - `JWT_EXPIRE=30d`
 
 ### 3. Install Dependencies

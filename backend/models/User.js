@@ -49,7 +49,7 @@ const userSchema = new mongoose.Schema(
     sellerApprovalStatus: {
       type: String,
       enum: {
-        values: ['pending', 'approved', 'rejected'],
+        values: ['pending', 'approved', 'rejected', 'suspended'],
         message: '{VALUE} is not a valid seller approval status'
       },
       default: function () {

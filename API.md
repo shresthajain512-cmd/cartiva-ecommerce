@@ -186,15 +186,29 @@ This document specifies the REST API endpoints for Cartiva, describing HTTP meth
 ```
 
 #### Error Responses for Login:
-- **Missing Email or Password (`400 Bad Request`):**
+- **Missing Email (`400 Bad Request`):**
   ```json
   {
     "success": false,
-    "message": "Please provide an email and password"
+    "message": "Please provide an email address"
+  }
+  ```
+- **Missing Password (`400 Bad Request`):**
+  ```json
+  {
+    "success": false,
+    "message": "Please provide a password"
+  }
+  ```
+- **Invalid Email Format (`400 Bad Request`):**
+  ```json
+  {
+    "success": false,
+    "message": "Please provide a valid email address"
   }
   ```
 - **Invalid Credentials - Wrong Password or Unknown Email (`401 Unauthorized`):**
-  *(Note: A generic message is deliberately used to prevent user enumeration attacks)*
+  *(Note: A generic message is deliberately returned to prevent user enumeration attacks)*
   ```json
   {
     "success": false,
@@ -216,21 +230,21 @@ Authorization: Bearer <your_jwt_token_here>
   ```json
   {
     "success": false,
-    "message": "Not authorized to access this route. Missing token."
+    "message": "Not authorized, no token provided"
   }
   ```
 - **Malformed / Tampered Token:**
   ```json
   {
     "success": false,
-    "message": "Not authorized. Invalid token signature."
+    "message": "Not authorized, invalid token"
   }
   ```
 - **Expired Token:**
   ```json
   {
     "success": false,
-    "message": "Not authorized. Token has expired, please log in again."
+    "message": "Not authorized, token has expired"
   }
   ```
 
@@ -248,26 +262,29 @@ Authorization: Bearer <your_jwt_token_here>
       "id": "6727a8bc9d1e2f0012345678",
       "name": "Alice Customer",
       "email": "alice@example.com",
-      "role": "customer",
-      "createdAt": "2026-11-05T00:15:00.000Z"
+      "role": "customer"
     }
   }
   ```
 
 ---
 
-### 1.5 Seller Dashboard & Storefront Management
-- **Method & Route:** `GET /api/auth/seller/dashboard`
+### 1.5 Seller Dashboard & Product Management (Approved Sellers Only)
+- **Method & Routes:**
+  - `GET /api/auth/seller/dashboard` (Storefront dashboard)
+  - `GET /api/auth/seller/products` (Product catalog management)
 - **Access:** Protected (`approved` sellers only)
 - **Headers:** `Authorization: Bearer <JWT_TOKEN>`
 - **Success Response (`200 OK`):**
   ```json
   {
     "success": true,
-    "message": "Welcome to your seller dashboard",
-    "storefront": {
-      "businessName": "Bob Electronics & Gadgets",
-      "approvalStatus": "approved"
+    "message": "Welcome to the approved seller portal",
+    "seller": {
+      "id": "6727a8bc9d1e2f0012345679",
+      "name": "Bob Seller",
+      "businessName": "Prime Electronics Hub",
+      "status": "approved"
     }
   }
   ```
@@ -275,14 +292,28 @@ Authorization: Bearer <your_jwt_token_here>
   ```json
   {
     "success": false,
-    "message": "User role 'customer' is not authorized to access this route"
+    "message": "Access denied: Seller account required (current role: 'customer')"
   }
   ```
 - **Forbidden - Pending Seller (`403 Forbidden`):**
   ```json
   {
     "success": false,
-    "message": "Seller storefront is pending approval. You cannot publish products or manage orders yet."
+    "message": "Access denied: Seller storefront is pending approval. You cannot publish products or manage orders yet."
+  }
+  ```
+- **Forbidden - Rejected Seller (`403 Forbidden`):**
+  ```json
+  {
+    "success": false,
+    "message": "Access denied: Seller account has been rejected. You cannot access seller management features."
+  }
+  ```
+- **Forbidden - Suspended Seller (`403 Forbidden`):**
+  ```json
+  {
+    "success": false,
+    "message": "Access denied: Seller account has been suspended. You cannot access seller management features."
   }
   ```
 
@@ -296,79 +327,119 @@ Authorization: Bearer <your_jwt_token_here>
   ```json
   {
     "success": true,
-    "message": "Welcome to Cartiva Admin Control Panel"
+    "message": "Welcome to the admin control center",
+    "admin": {
+      "id": "6727a8bc9d1e2f0012345680",
+      "name": "Day5 Administrator",
+      "email": "admin@cartiva.com",
+      "role": "admin"
+    }
   }
   ```
 - **Forbidden - Non-Admin User (`403 Forbidden`):**
   ```json
   {
     "success": false,
-    "message": "Access denied. Administrator privileges required."
+    "message": "Access denied: Admin privileges required"
   }
   ```
 
 ---
 
+### 1.7 Required Environment Variables (Names Only)
+For secure execution, the backend requires the following environment variables (stored locally in `backend/.env`):
+- `PORT`: Server listening port (default: `5001`).
+- `NODE_ENV`: Runtime environment (`development` / `production`).
+- `MONGO_URI`: MongoDB connection string.
+- `JWT_SECRET`: Cryptographic secret key used to sign and verify JSON Web Tokens.
+- `JWT_EXPIRE`: Token lifespan duration (e.g., `30d`).
+
+---
+
 ## 🛍️ 2. Product Endpoints (`/api/products`)
 
-### 2.1 Get Product Catalogue (With Search, Filter, & Sort)
+### 2.1 Get Multi-Vendor Product Catalogue (With Whitelisted Search, Filter, Sort & Pagination)
 - **Method & Route:** `GET /api/products`
-- **Access:** Public
-- **Query Parameters (Optional):**
-  - `category`: Filter by category (e.g., `?category=Electronics`)
-  - `keyword`: Search by title/description (e.g., `?keyword=headphones`)
-  - `sort`: Order results (e.g., `?sort=price_asc`, `?sort=price_desc`, `?sort=newest`)
+- **Access:** Public (Only displays published products from approved sellers)
+- **Query Parameters (Whitelisted & Optional):**
+  - `keyword`: Search title or description (e.g., `?keyword=keyboard`). Regex characters safely escaped.
+  - `category`: Whitelisted filter: `Electronics`, `Fashion`, `Home & Kitchen`, `Books`, `Fitness`, `Other`.
+  - `seller`: Filter by specific approved seller's MongoDB `ObjectId`.
+  - `inStock`: `true` to filter items where `stockCount > 0`.
+  - `sort`: Whitelisted options: `price_asc`, `price_desc`, `newest` (default), `oldest`.
+  - `page`: Positive integer (default: `1`).
+  - `limit`: Integer between 1 and 100 (default: `20`).
 - **Success Response (`200 OK`):**
   ```json
   {
     "success": true,
     "count": 2,
+    "totalProducts": 2,
+    "totalPages": 1,
+    "currentPage": 1,
     "products": [
       {
         "_id": "6727b1029d1e2f0012345679",
-        "title": "Wireless Noise-Canceling Headphones",
-        "price": 2499,
+        "title": "Wireless Ergonomic Mechanical Keyboard",
+        "price": 4599,
         "category": "Electronics",
-        "imageUrl": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e",
-        "stockCount": 15
+        "imageUrl": "https://images.unsplash.com/photo-1587829741301-dc798b83add3",
+        "stockCount": 25,
+        "storeName": "Alice Apex Gadgets",
+        "seller": {
+          "_id": "6727a8bc9d1e2f0012345679",
+          "name": "Day6 Seller Alice",
+          "businessName": "Alice Apex Gadgets"
+        }
       }
     ]
   }
   ```
 
-### 2.2 Get Single Product Details
-- **Method & Route:** `GET /api/products/:id`
+### 2.2 Get Supported Product Categories
+- **Method & Route:** `GET /api/products/categories`
 - **Access:** Public
 - **Success Response (`200 OK`):**
   ```json
   {
     "success": true,
-    "product": {
-      "_id": "6727b1029d1e2f0012345679",
-      "title": "Wireless Noise-Canceling Headphones",
-      "description": "High-fidelity audio with 30-hour battery life and fast charging.",
-      "price": 2499,
-      "category": "Electronics",
-      "imageUrl": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e",
-      "stockCount": 15,
-      "createdAt": "2026-11-03T18:00:00.000Z"
-    }
+    "categories": [
+      "Electronics",
+      "Fashion",
+      "Home & Kitchen",
+      "Books",
+      "Fitness",
+      "Other"
+    ]
   }
   ```
 
-### 2.3 Create Product (Admin Only)
+### 2.3 Get Storefront Catalogue by Seller
+- **Method & Route:** `GET /api/products/store/:sellerId`
+- **Access:** Public
+- **Success Response (`200 OK`):** Returns published products belonging exclusively to the specified approved seller.
+- **Error Response (`404 Not Found`):** Returns 404 if seller does not exist or is not approved (`pending`/`suspended`/`rejected`).
+
+### 2.4 Get Single Product Details
+- **Method & Route:** `GET /api/products/:id`
+- **Access:** Public
+- **Success Response (`200 OK`):** Returns full product details populated with seller credentials.
+- **Error Response (`404 Not Found`):** Returns 404 if product does not exist, is archived, or belongs to an unapproved/suspended seller.
+
+### 2.5 Create & Publish Product (Approved Sellers Only)
 - **Method & Route:** `POST /api/products`
-- **Access:** Protected (Admin Only)
-- **Headers:** `Authorization: Bearer <ADMIN_TOKEN>`
+- **Access:** Protected (`approvedSellerOnly`)
+- **Headers:** `Authorization: Bearer <SELLER_TOKEN>`
+- **Security Rule:** Seller identity (`seller: req.user._id`, `storeName: req.user.businessName`) is strictly derived from the verified JWT on the server. Client-provided `seller` or `createdBy` bodies are ignored.
 - **Request Body:**
   ```json
   {
-    "title": "Mechanical Gaming Keyboard",
-    "description": "RGB tactile mechanical switches with detachable braided cable.",
-    "price": 3299,
+    "title": "Wireless Ergonomic Mechanical Keyboard",
+    "description": "High-grade PBT keycaps with Bluetooth 5.3 and 2.4GHz dongle.",
+    "price": 4599,
     "category": "Electronics",
     "imageUrl": "https://images.unsplash.com/photo-1587829741301-dc798b83add3",
-    "stockCount": 20
+    "stockCount": 25
   }
   ```
 - **Success Response (`201 Created`):**
@@ -378,18 +449,29 @@ Authorization: Bearer <your_jwt_token_here>
     "message": "Product created successfully",
     "product": {
       "_id": "6727b2049d1e2f0012345680",
-      "title": "Mechanical Gaming Keyboard",
-      "price": 3299,
+      "title": "Wireless Ergonomic Mechanical Keyboard",
+      "price": 4599,
       "category": "Electronics",
-      "stockCount": 20
+      "stockCount": 25,
+      "seller": "6727a8bc9d1e2f0012345679",
+      "storeName": "Alice Apex Gadgets",
+      "isPublished": true,
+      "isArchived": false
     }
   }
   ```
 
-### 2.4 Update Product (Admin Only)
+### 2.6 Get Seller's Own Products (Seller Management)
+- **Method & Route:** `GET /api/products/seller/my-products`
+- **Access:** Protected (`approvedSellerOnly`)
+- **Headers:** `Authorization: Bearer <SELLER_TOKEN>`
+- **Success Response (`200 OK`):** Returns only the products owned by the authenticated seller.
+
+### 2.7 Update Product (Owner Seller or Admin)
 - **Method & Route:** `PUT /api/products/:id`
-- **Access:** Protected (Admin Only)
-- **Request Body:** Partial or complete product updates.
+- **Access:** Protected (`approvedSellerOrAdmin`)
+- **Headers:** `Authorization: Bearer <JWT_TOKEN>`
+- **Security Rule:** Object-Level Authorization verifies that `product.seller == req.user._id` (or user is `admin`).
 - **Success Response (`200 OK`):**
   ```json
   {
@@ -398,15 +480,24 @@ Authorization: Bearer <your_jwt_token_here>
     "product": { ... }
   }
   ```
+- **Error Response (`403 Forbidden`):** If a seller attempts to modify a product belonging to another vendor:
+  ```json
+  {
+    "success": false,
+    "message": "Access denied: You are not authorized to modify products from another seller"
+  }
+  ```
 
-### 2.5 Delete Product (Admin Only)
+### 2.8 Soft-Delete / Archive Product (Owner Seller or Admin)
 - **Method & Route:** `DELETE /api/products/:id`
-- **Access:** Protected (Admin Only)
+- **Access:** Protected (`approvedSellerOrAdmin`)
+- **Headers:** `Authorization: Bearer <JWT_TOKEN>`
+- **Security Rule:** Soft-deletes product (`isArchived: true`, `isPublished: false`) to preserve historical order receipts and prevent orphaned references.
 - **Success Response (`200 OK`):**
   ```json
   {
     "success": true,
-    "message": "Product deleted successfully"
+    "message": "Product archived successfully"
   }
   ```
 
