@@ -240,6 +240,7 @@ const runDay6TestSuite = async () => {
         description: 'Immersive sound with 40-hour battery life.',
         price: 3499,
         category: 'Electronics',
+        imageUrl: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e',
         stockCount: 15,
         seller: sellerBUser._id.toString(), // FAKE SELLER SPOOF ATTEMPT
         createdBy: sellerBUser._id.toString()
@@ -373,6 +374,7 @@ const runDay6TestSuite = async () => {
         description: 'Essential software engineering handbook on agile practices.',
         price: 899,
         category: 'Books',
+        imageUrl: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c',
         stockCount: 50
       })
     });

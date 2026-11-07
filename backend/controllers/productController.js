@@ -8,7 +8,10 @@ const ALLOWED_SORTS = {
   price_asc: { price: 1 },
   price_desc: { price: -1 },
   newest: { createdAt: -1 },
-  oldest: { createdAt: 1 }
+  oldest: { createdAt: 1 },
+  top_rated: { rating: -1, createdAt: -1 },
+  popular: { reviewsCount: -1, stockCount: -1 },
+  featured: { isFeatured: -1, createdAt: -1 }
 };
 
 // Helper: Safely escape user input for regular expression searches
@@ -21,7 +24,7 @@ const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
  */
 const getProducts = async (req, res) => {
   try {
-    const { keyword, category, seller, sort, inStock, page = 1, limit = 20 } = req.query;
+    const { keyword, category, seller, sort, inStock, minPrice, maxPrice, rating, featured, discounted, page = 1, limit = 20 } = req.query;
 
     const query = {
       isPublished: true,
@@ -52,7 +55,9 @@ const getProducts = async (req, res) => {
         const escaped = escapeRegex(trimmed);
         query.$or = [
           { title: { $regex: escaped, $options: 'i' } },
-          { description: { $regex: escaped, $options: 'i' } }
+          { description: { $regex: escaped, $options: 'i' } },
+          { category: { $regex: escaped, $options: 'i' } },
+          { storeName: { $regex: escaped, $options: 'i' } }
         ];
       }
     }
@@ -99,6 +104,32 @@ const getProducts = async (req, res) => {
     // 4. Inventory filter
     if (inStock === 'true') {
       query.stockCount = { $gt: 0 };
+    }
+
+    // 4b. Price range filters
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      query.price = {};
+      if (minPrice !== undefined && !isNaN(Number(minPrice))) {
+        query.price.$gte = Number(minPrice);
+      }
+      if (maxPrice !== undefined && !isNaN(Number(maxPrice))) {
+        query.price.$lte = Number(maxPrice);
+      }
+    }
+
+    // 4c. Rating threshold filter
+    if (rating !== undefined && !isNaN(Number(rating))) {
+      query.rating = { $gte: Number(rating) };
+    }
+
+    // 4d. Featured filter
+    if (featured === 'true') {
+      query.isFeatured = true;
+    }
+
+    // 4e. Discounted filter
+    if (discounted === 'true') {
+      query.originalPrice = { $gt: 0 };
     }
 
     // 5. Sorting validation & whitelisting

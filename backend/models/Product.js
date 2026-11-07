@@ -32,7 +32,7 @@ const productSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Please provide a product image URL'],
       trim: true,
-      default: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30'
+      default: 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=800&q=80'
     },
     stockCount: {
       type: Number,
@@ -66,6 +66,39 @@ const productSchema = new mongoose.Schema(
       index: true
     },
     isArchived: {
+      type: Boolean,
+      default: false,
+      index: true
+    },
+    // Enhanced catalogue attributes
+    originalPrice: {
+      type: Number,
+      min: [0, 'Original price must be positive']
+    },
+    rating: {
+      type: Number,
+      min: 0,
+      max: 5,
+      default: 4.8
+    },
+    reviewsCount: {
+      type: Number,
+      min: 0,
+      default: 0
+    },
+    specs: {
+      type: Map,
+      of: String
+    },
+    images: [{
+      type: String,
+      trim: true
+    }],
+    tags: [{
+      type: String,
+      trim: true
+    }],
+    isFeatured: {
       type: Boolean,
       default: false,
       index: true
