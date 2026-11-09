@@ -1,64 +1,96 @@
-import React, { useState } from 'react';
-import { X, Trash2, ArrowRight, ShieldCheck, ShoppingBag, CheckCircle } from 'lucide-react';
+import React, { useEffect } from 'react';
+import {
+  X,
+  Trash2,
+  ArrowRight,
+  ShieldCheck,
+  ShoppingBag,
+  Store,
+  AlertTriangle,
+  ArrowLeft,
+  Truck,
+  Sparkles
+} from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useToast } from '../context/ToastContext';
 
-export const CartDrawer = ({ onOpenCheckout }) => {
+export const CartDrawer = ({ onOpenCheckout, onBrowseCatalogue }) => {
   const {
     items,
     isCartOpen,
-    setIsCartOpen,
+    closeCart,
     removeFromCart,
     updateQuantity,
     subtotal,
+    shippingFee,
+    grandTotal,
     totalItems,
-    clearCart
+    FREE_SHIPPING_THRESHOLD,
+    groupedBySeller,
+    sellerCount,
+    hasOutOfStockItems
   } = useCart();
 
-  const [checkingOut, setCheckingOut] = useState(false);
-  const [orderConfirmed, setOrderConfirmed] = useState(null);
+  const { addToast } = useToast();
+
+  // Close on Escape key press
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isCartOpen) {
+        closeCart();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isCartOpen, closeCart]);
 
   if (!isCartOpen) return null;
 
-  const FREE_SHIPPING_THRESHOLD = 2999;
-  const shippingFee = subtotal >= FREE_SHIPPING_THRESHOLD || subtotal === 0 ? 0 : 149;
-  const grandTotal = subtotal + shippingFee;
-
-  const handleTestCheckout = () => {
-    if (onOpenCheckout) {
-      setIsCartOpen(false);
-      onOpenCheckout();
+  const handleCheckoutClick = () => {
+    if (hasOutOfStockItems) {
+      addToast('Please remove out-of-stock items before proceeding to checkout', 'warning');
       return;
     }
-    setCheckingOut(true);
-    setTimeout(() => {
-      const confirmation = {
-        orderId: `ORD-${Date.now().toString().slice(-6)}`,
-        txnId: `TEST-TXN-${Math.floor(100000 + Math.random() * 900000)}`,
-        amount: grandTotal,
-        itemsCount: totalItems
-      };
-      setOrderConfirmed(confirmation);
-      clearCart();
-      setCheckingOut(false);
-    }, 1200);
+    closeCart();
+    if (onOpenCheckout) {
+      onOpenCheckout();
+    }
   };
 
-  const handleClose = () => {
-    setOrderConfirmed(null);
-    setIsCartOpen(false);
+  const handleBrowseClick = () => {
+    closeCart();
+    if (onBrowseCatalogue) {
+      onBrowseCatalogue();
+    }
+  };
+
+  const handleRemove = (product) => {
+    removeFromCart(product._id || product.id);
+    addToast(`Removed "${product.title}" from your shopping bag`, 'info');
   };
 
   return (
-    <div className="cart-drawer-overlay" onClick={handleClose} role="dialog" aria-modal="true">
-      <div className="cart-drawer-card animate-fade-in" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="cart-drawer-overlay animate-fade-in"
+      onClick={closeCart}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Shopping Bag Drawer"
+    >
+      <div className="cart-drawer-card animate-slide-left" onClick={(e) => e.stopPropagation()}>
         {/* 1. Header */}
         <div className="cart-drawer-header">
           <div className="header-title-group">
             <ShoppingBag size={20} className="header-bag-icon" />
             <h2 className="header-title">Shopping Bag</h2>
-            <span className="header-count-badge">({totalItems})</span>
+            <span className="header-count-badge">({totalItems} {totalItems === 1 ? 'item' : 'items'})</span>
           </div>
-          <button className="drawer-close-btn" onClick={handleClose} aria-label="Close shopping bag">
+          <button
+            type="button"
+            className="drawer-close-btn"
+            onClick={closeCart}
+            aria-label="Close shopping bag"
+          >
             <X size={20} />
           </button>
         </div>
@@ -68,121 +100,150 @@ export const CartDrawer = ({ onOpenCheckout }) => {
           <div className="shipping-progress-box">
             {subtotal >= FREE_SHIPPING_THRESHOLD ? (
               <p className="shipping-congrats">
-                ✨ You have unlocked <strong>Complimentary Studio Shipping</strong>!
+                <Sparkles size={14} color="var(--color-gold)" />
+                <span>You have unlocked <strong>Complimentary Studio Shipping</strong>!</span>
               </p>
             ) : (
               <p className="shipping-needed">
-                Add <strong>₹{(FREE_SHIPPING_THRESHOLD - subtotal).toLocaleString('en-IN')}</strong> more to enjoy complimentary shipping.
+                <Truck size={14} />
+                <span>
+                  Add <strong>₹{(FREE_SHIPPING_THRESHOLD - subtotal).toLocaleString('en-IN')}</strong> more for complimentary shipping.
+                </span>
               </p>
             )}
-            <div className="progress-track">
+            <div className="progress-track" aria-hidden="true">
               <div
                 className="progress-bar"
                 style={{
-                  width: `${Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100)}%`
+                  width: `${Math.min(100, Math.round((subtotal / FREE_SHIPPING_THRESHOLD) * 100))}%`
                 }}
-              ></div>
+              />
             </div>
           </div>
         )}
 
         {/* 3. Main Drawer Body */}
         <div className="cart-drawer-body">
-          {/* Order Confirmed Screen */}
-          {orderConfirmed ? (
-            <div className="checkout-success-view animate-fade-in">
-              <CheckCircle size={56} className="success-icon" />
-              <h3 className="success-title">Order Confirmed (Test Mode)</h3>
-              <p className="success-subtitle">
-                Thank you for testing the Cartiva marketplace! Your simulated order has been registered.
-              </p>
-
-              <div className="receipt-box">
-                <div className="receipt-row">
-                  <span>Order Reference:</span>
-                  <strong>{orderConfirmed.orderId}</strong>
-                </div>
-                <div className="receipt-row">
-                  <span>Test Transaction ID:</span>
-                  <strong>{orderConfirmed.txnId}</strong>
-                </div>
-                <div className="receipt-row">
-                  <span>Paid Total:</span>
-                  <strong>₹{orderConfirmed.amount.toLocaleString('en-IN')}</strong>
-                </div>
-                <div className="receipt-row">
-                  <span>Status:</span>
-                  <span className="badge badge-success">COMPLETED_TEST_MODE</span>
-                </div>
-              </div>
-
-              <button className="btn btn-primary" onClick={handleClose}>
-                Continue Browsing Catalogue
-              </button>
-            </div>
-          ) : items.length === 0 ? (
-            /* Empty Cart */
-            <div className="empty-cart-view">
+          {items.length === 0 ? (
+            /* Empty Cart State */
+            <div className="empty-cart-view animate-fade-in">
               <div className="empty-bag-circle">
-                <ShoppingBag size={36} />
+                <ShoppingBag size={40} strokeWidth={1.5} color="var(--color-gold)" />
               </div>
-              <h3 className="empty-bag-title">Your Bag is Empty</h3>
+              <h3 className="empty-bag-title">Your Shopping Bag is Empty</h3>
               <p className="empty-bag-desc">
-                Explore our curated collections of artisanal technology, literature, home ceramics, and bespoke fashion.
+                Explore our master catalogue of handcrafted artisanal technology, literature, studio ceramics, and bespoke objects.
               </p>
-              <button className="btn btn-primary btn-sm" onClick={handleClose}>
-                Browse Curated Pieces
+              <button
+                type="button"
+                className="btn-primary btn-explore-catalogue"
+                onClick={handleBrowseClick}
+              >
+                <span>Browse Curated Pieces</span>
+                <ArrowRight size={15} />
               </button>
             </div>
           ) : (
-            /* Itemized List */
-            <div className="cart-items-list">
-              {items.map((item) => (
-                <div key={item.product._id} className="cart-item-card">
-                  <img
-                    src={item.product.imageUrl}
-                    alt={item.product.title}
-                    className="item-thumbnail"
-                    onError={(e) => {
-                      e.target.src = 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=400&q=80';
-                    }}
-                  />
-
-                  <div className="item-info">
-                    <span className="item-store">
-                      {item.product.storeName || item.product.seller?.businessName || 'Artisan Studio'}
+            /* Multi-Vendor Grouped Item List */
+            <div className="cart-items-container">
+              {groupedBySeller.map((group) => (
+                <div key={group.sellerId} className="seller-package-group">
+                  {/* Studio Header for Multi-Vendor Clarity */}
+                  <div className="seller-package-header">
+                    <Store size={14} className="package-store-icon" />
+                    <span className="package-store-name">{group.storeName}</span>
+                    <span className="package-count-badge">
+                      {group.items.length} {group.items.length === 1 ? 'piece' : 'pieces'}
                     </span>
-                    <h4 className="item-title">{item.product.title}</h4>
-                    <span className="item-price">
-                      ₹{Number(item.product.price).toLocaleString('en-IN')}
-                    </span>
+                  </div>
 
-                    <div className="item-actions-row">
-                      <div className="stepper-compact">
-                        <button
-                          onClick={() => updateQuantity(item.product._id, item.quantity - 1)}
-                          aria-label="Decrease quantity"
-                        >
-                          -
-                        </button>
-                        <span>{item.quantity}</span>
-                        <button
-                          onClick={() => updateQuantity(item.product._id, item.quantity + 1)}
-                          disabled={item.quantity >= (item.product.stockCount || 99)}
-                          aria-label="Increase quantity"
-                        >
-                          +
-                        </button>
-                      </div>
+                  {/* Individual Products within Studio Package */}
+                  <div className="package-items-list">
+                    {group.items.map((item) => {
+                      const prod = item.product;
+                      const maxStock = typeof prod.stockCount === 'number' ? Math.max(0, prod.stockCount) : 999;
+                      const isOutOfStock = maxStock === 0;
+                      const isLowStock = maxStock > 0 && maxStock <= 5;
+                      const itemSubtotal = (Number(prod.price) || 0) * item.quantity;
 
-                      <button
-                        className="btn-trash"
-                        onClick={() => removeFromCart(item.product._id)}
-                        aria-label={`Remove ${item.product.title} from bag`}
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
+                      return (
+                        <div key={prod._id || prod.id} className="cart-item-card">
+                          <img
+                            src={prod.imageUrl}
+                            alt={prod.title}
+                            className="item-thumbnail"
+                            onError={(e) => {
+                              e.target.src =
+                                'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=400&q=80';
+                            }}
+                          />
+
+                          <div className="item-info">
+                            <div className="item-top-row">
+                              <h4 className="item-title" title={prod.title}>{prod.title}</h4>
+                              <button
+                                type="button"
+                                className="btn-trash"
+                                onClick={() => handleRemove(prod)}
+                                aria-label={`Remove ${prod.title} from bag`}
+                                title="Remove item"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+
+                            {/* Price & Item Subtotal */}
+                            <div className="item-price-meta">
+                              <span className="item-unit-price">
+                                ₹{Number(prod.price).toLocaleString('en-IN')} each
+                              </span>
+                              <span className="item-total-price">
+                                ₹{itemSubtotal.toLocaleString('en-IN')}
+                              </span>
+                            </div>
+
+                            {/* Stock Warning Pills */}
+                            {isOutOfStock ? (
+                              <div className="item-stock-warning danger">
+                                <AlertTriangle size={12} />
+                                <span>Sold Out — Remove to proceed</span>
+                              </div>
+                            ) : isLowStock ? (
+                              <div className="item-stock-warning warning">
+                                <span>Only {maxStock} remaining in studio inventory</span>
+                              </div>
+                            ) : null}
+
+                            {/* Stepper & Quantity Controls */}
+                            <div className="item-actions-row">
+                              <div className="stepper-compact">
+                                <button
+                                  type="button"
+                                  onClick={() => updateQuantity(prod._id || prod.id, item.quantity - 1)}
+                                  disabled={item.quantity <= 1}
+                                  aria-label="Decrease quantity"
+                                >
+                                  –
+                                </button>
+                                <span className="stepper-val">{item.quantity}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => updateQuantity(prod._id || prod.id, item.quantity + 1)}
+                                  disabled={item.quantity >= maxStock || isOutOfStock}
+                                  aria-label="Increase quantity"
+                                >
+                                  +
+                                </button>
+                              </div>
+
+                              <span className="item-stock-limit-note">
+                                Max {maxStock}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ))}
@@ -190,42 +251,56 @@ export const CartDrawer = ({ onOpenCheckout }) => {
           )}
         </div>
 
-        {/* 4. Footer & Checkout */}
-        {!orderConfirmed && items.length > 0 && (
+        {/* 4. Footer & Multi-Vendor Checkout Summary */}
+        {items.length > 0 && (
           <div className="cart-drawer-footer">
             <div className="summary-row">
-              <span className="summary-label">Subtotal</span>
+              <span className="summary-label">Subtotal ({totalItems} {totalItems === 1 ? 'piece' : 'pieces'})</span>
               <span className="summary-val">₹{subtotal.toLocaleString('en-IN')}</span>
             </div>
+
             <div className="summary-row">
-              <span className="summary-label">Direct Studio Shipping</span>
+              <span className="summary-label">
+                Direct Studio Shipping
+                {sellerCount > 1 && (
+                  <span className="multi-studio-badge"> ({sellerCount} Ateliers)</span>
+                )}
+              </span>
               <span className="summary-val">
-                {shippingFee === 0 ? <strong className="free-tag">Free</strong> : `₹${shippingFee}`}
+                {shippingFee === 0 ? <strong className="free-tag">Complimentary</strong> : `₹${shippingFee}`}
               </span>
             </div>
+
             <div className="summary-row total-row">
               <span className="summary-label">Total Payable</span>
               <span className="summary-total">₹{grandTotal.toLocaleString('en-IN')}</span>
             </div>
 
-            <button
-              className="btn btn-primary btn-checkout"
-              onClick={handleTestCheckout}
-              disabled={checkingOut}
-            >
-              {checkingOut ? (
-                <span>Simulating Sandbox Payment...</span>
-              ) : (
-                <>
-                  <span>Proceed to Test Checkout</span>
-                  <ArrowRight size={17} />
-                </>
-              )}
-            </button>
+            {/* Checkout Action Stack */}
+            <div className="drawer-cta-stack">
+              <button
+                type="button"
+                className={`btn-primary btn-checkout ${hasOutOfStockItems ? 'disabled' : ''}`}
+                onClick={handleCheckoutClick}
+                disabled={hasOutOfStockItems}
+              >
+                <span>Proceed to Checkout</span>
+                <ArrowRight size={17} />
+              </button>
+
+              <button
+                type="button"
+                className="btn-continue-shopping"
+                onClick={handleBrowseClick}
+              >
+                <ArrowLeft size={14} />
+                <span>Continue Shopping Catalogue</span>
+              </button>
+            </div>
 
             <div className="footer-guarantee">
               <ShieldCheck size={14} className="shield-icon" />
-              <span>Simulated Test Sandbox — No Real Charges</span>
+              <span>Direct Maker Provenance • Fully Insured Studio Packaging</span>
             </div>
           </div>
         )}
@@ -235,7 +310,7 @@ export const CartDrawer = ({ onOpenCheckout }) => {
         .cart-drawer-overlay {
           position: fixed;
           inset: 0;
-          z-index: 600;
+          z-index: 700;
           background: rgba(37, 37, 34, 0.65);
           backdrop-filter: blur(4px);
           display: flex;
@@ -244,12 +319,12 @@ export const CartDrawer = ({ onOpenCheckout }) => {
 
         .cart-drawer-card {
           width: 100%;
-          max-width: 460px;
+          max-width: 480px;
           height: 100%;
           background-color: var(--color-white);
           display: flex;
           flex-direction: column;
-          box-shadow: var(--shadow-xl);
+          box-shadow: -4px 0 24px rgba(0, 0, 0, 0.15);
           border-left: 1px solid var(--color-beige);
         }
 
@@ -257,14 +332,15 @@ export const CartDrawer = ({ onOpenCheckout }) => {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 1.5rem 1.75rem;
+          padding: 1.4rem 1.75rem;
           border-bottom: 1px solid var(--color-beige);
+          background-color: var(--color-cream);
         }
 
         .header-title-group {
           display: flex;
           align-items: center;
-          gap: 0.5rem;
+          gap: 0.6rem;
         }
 
         .header-bag-icon {
@@ -274,282 +350,346 @@ export const CartDrawer = ({ onOpenCheckout }) => {
         .header-title {
           font-family: var(--font-heading);
           font-size: 1.35rem;
+          margin: 0;
           color: var(--color-charcoal);
         }
 
         .header-count-badge {
           font-size: 0.85rem;
-          color: #8C887B;
+          color: var(--color-charcoal-muted);
           font-weight: 500;
         }
 
         .drawer-close-btn {
-          color: var(--color-charcoal-muted);
-          width: 32px;
-          height: 32px;
+          background: none;
+          border: none;
+          color: var(--color-charcoal);
+          cursor: pointer;
           display: flex;
           align-items: center;
-          justify-content: center;
-          border-radius: var(--radius-full);
-          transition: background var(--transition-fast);
+          padding: 0.35rem;
+          border-radius: var(--radius-sm);
+          transition: background-color var(--transition-fast);
         }
-
         .drawer-close-btn:hover {
           background-color: var(--color-beige);
-          color: var(--color-charcoal);
         }
 
         .shipping-progress-box {
-          background-color: var(--color-cream);
           padding: 0.85rem 1.75rem;
+          background-color: var(--color-cream-light);
           border-bottom: 1px solid var(--color-beige);
+          font-size: 0.82rem;
         }
 
-        .shipping-congrats, .shipping-needed {
-          font-size: 0.775rem;
+        .shipping-congrats,
+        .shipping-needed {
+          display: flex;
+          align-items: center;
+          gap: 0.45rem;
+          margin: 0 0 0.45rem;
           color: var(--color-charcoal);
-          margin-bottom: 0.45rem;
         }
 
         .progress-track {
           width: 100%;
           height: 5px;
-          background-color: var(--color-beige-dark);
+          background-color: var(--color-beige);
           border-radius: var(--radius-full);
           overflow: hidden;
         }
 
         .progress-bar {
           height: 100%;
-          background-color: var(--color-gold);
-          transition: width var(--transition-normal);
+          background: linear-gradient(90deg, var(--color-gold-muted), var(--color-gold));
+          border-radius: var(--radius-full);
+          transition: width 0.3s ease-out;
         }
 
         .cart-drawer-body {
           flex: 1;
           overflow-y: auto;
-          padding: 1.5rem 1.75rem;
+          padding: 1.25rem 1.75rem;
         }
 
         .empty-cart-view {
           text-align: center;
-          padding: 4rem 1rem;
+          padding: 4.5rem 1.5rem;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
         }
 
         .empty-bag-circle {
-          width: 72px;
-          height: 72px;
+          width: 80px;
+          height: 80px;
           border-radius: var(--radius-full);
-          background-color: var(--color-gold-subtle);
-          color: var(--color-gold);
+          background-color: var(--color-cream);
+          border: 1px solid var(--color-beige);
           display: flex;
           align-items: center;
           justify-content: center;
-          margin: 0 auto 1.25rem;
+          margin-bottom: 1.5rem;
         }
 
         .empty-bag-title {
-          font-size: 1.35rem;
+          font-family: var(--font-heading);
+          font-size: 1.5rem;
+          margin: 0 0 0.5rem;
           color: var(--color-charcoal);
-          margin-bottom: 0.5rem;
         }
 
         .empty-bag-desc {
-          font-size: 0.875rem;
           color: var(--color-charcoal-muted);
-          margin-bottom: 1.5rem;
+          font-size: 0.9rem;
           line-height: 1.6;
+          margin: 0 0 2rem;
+          max-width: 320px;
         }
 
-        .cart-items-list {
+        .btn-explore-catalogue {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.85rem 1.75rem;
+        }
+
+        .seller-package-group {
+          margin-bottom: 1.5rem;
+          border: 1px solid var(--color-beige);
+          border-radius: var(--radius-sm);
+          overflow: hidden;
+        }
+
+        .seller-package-header {
           display: flex;
-          flex-direction: column;
-          gap: 1.25rem;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.65rem 1rem;
+          background-color: var(--color-cream-light);
+          border-bottom: 1px solid var(--color-beige);
+          font-size: 0.82rem;
+          font-weight: 600;
+          color: var(--color-charcoal);
+        }
+
+        .package-store-icon {
+          color: var(--color-gold);
+        }
+
+        .package-count-badge {
+          margin-left: auto;
+          font-size: 0.74rem;
+          color: var(--color-charcoal-muted);
         }
 
         .cart-item-card {
           display: flex;
           gap: 1rem;
-          padding-bottom: 1.25rem;
-          border-bottom: 1px solid var(--color-beige);
+          padding: 1rem;
+          border-bottom: 1px solid var(--color-beige-light);
+          background-color: var(--color-white);
+        }
+        .cart-item-card:last-child {
+          border-bottom: none;
         }
 
         .item-thumbnail {
-          width: 76px;
-          height: 86px;
+          width: 72px;
+          height: 72px;
           object-fit: cover;
           border-radius: var(--radius-sm);
-          background-color: var(--color-beige);
+          border: 1px solid var(--color-beige);
           flex-shrink: 0;
         }
 
         .item-info {
+          flex: 1;
           display: flex;
           flex-direction: column;
-          flex: 1;
+          gap: 0.35rem;
         }
 
-        .item-store {
-          font-size: 0.675rem;
-          text-transform: uppercase;
-          color: var(--color-gold);
-          font-weight: 600;
-          letter-spacing: 0.05em;
+        .item-top-row {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 0.5rem;
         }
 
         .item-title {
-          font-family: var(--font-heading);
-          font-size: 0.95rem;
+          font-size: 0.9rem;
+          font-weight: 600;
+          margin: 0;
           color: var(--color-charcoal);
-          margin-bottom: 0.25rem;
-          display: -webkit-box;
-          -webkit-line-clamp: 1;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
+          line-height: 1.35;
         }
 
-        .item-price {
+        .btn-trash {
+          background: none;
+          border: none;
+          color: var(--color-charcoal-muted);
+          cursor: pointer;
+          padding: 0.2rem;
+          border-radius: var(--radius-sm);
+          transition: color var(--transition-fast);
+        }
+        .btn-trash:hover {
+          color: var(--color-danger);
+        }
+
+        .item-price-meta {
+          display: flex;
+          align-items: baseline;
+          justify-content: space-between;
+          font-size: 0.84rem;
+        }
+
+        .item-unit-price {
+          color: var(--color-charcoal-muted);
+        }
+
+        .item-total-price {
           font-weight: 700;
-          font-size: 0.95rem;
           color: var(--color-charcoal);
-          margin-bottom: 0.65rem;
+        }
+
+        .item-stock-warning {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.35rem;
+          font-size: 0.74rem;
+          padding: 0.15rem 0.45rem;
+          border-radius: var(--radius-sm);
+          width: fit-content;
+        }
+        .item-stock-warning.warning {
+          background-color: var(--color-warning-bg);
+          color: var(--color-warning);
+        }
+        .item-stock-warning.danger {
+          background-color: var(--color-danger-bg);
+          color: var(--color-danger);
+          font-weight: 600;
         }
 
         .item-actions-row {
           display: flex;
           align-items: center;
-          justify-content: space-between;
+          gap: 0.75rem;
+          margin-top: 0.25rem;
         }
 
         .stepper-compact {
           display: inline-flex;
           align-items: center;
-          border: 1px solid var(--color-beige-dark);
+          border: 1px solid var(--color-beige);
           border-radius: var(--radius-sm);
-          height: 28px;
+          overflow: hidden;
+          background-color: var(--color-cream-light);
         }
 
         .stepper-compact button {
+          background: none;
+          border: none;
           width: 26px;
-          height: 100%;
+          height: 26px;
+          font-size: 0.95rem;
+          color: var(--color-charcoal);
+          cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 0.85rem;
-          color: var(--color-charcoal);
+        }
+        .stepper-compact button:disabled {
+          color: var(--color-beige-dark);
+          cursor: not-allowed;
         }
 
-        .stepper-compact button:hover:not(:disabled) {
-          background-color: var(--color-beige);
-        }
-
-        .stepper-compact span {
-          padding: 0 0.5rem;
-          font-size: 0.8rem;
+        .stepper-val {
+          width: 28px;
+          text-align: center;
+          font-size: 0.84rem;
           font-weight: 600;
         }
 
-        .btn-trash {
-          color: #A39D90;
-          padding: 0.3rem;
-          transition: color var(--transition-fast);
-        }
-
-        .btn-trash:hover {
-          color: var(--color-danger);
-        }
-
-        /* Order Confirmed View */
-        .checkout-success-view {
-          text-align: center;
-          padding: 2rem 0;
-        }
-
-        .success-icon {
-          color: var(--color-success);
-          margin: 0 auto 1.25rem;
-        }
-
-        .success-title {
-          font-size: 1.5rem;
-          color: var(--color-charcoal);
-          margin-bottom: 0.5rem;
-        }
-
-        .success-subtitle {
-          font-size: 0.85rem;
+        .item-stock-limit-note {
+          font-size: 0.72rem;
           color: var(--color-charcoal-muted);
-          margin-bottom: 1.5rem;
-          line-height: 1.5;
         }
 
-        .receipt-box {
-          background-color: var(--color-cream);
-          border: 1px solid var(--color-beige);
-          border-radius: var(--radius-sm);
-          padding: 1.25rem;
-          margin-bottom: 1.75rem;
-          text-align: left;
-          font-size: 0.85rem;
-        }
-
-        .receipt-row {
-          display: flex;
-          justify-content: space-between;
-          padding: 0.35rem 0;
-        }
-
-        .receipt-row strong {
-          color: var(--color-charcoal);
-        }
-
-        /* Footer */
         .cart-drawer-footer {
-          padding: 1.5rem 1.75rem;
-          background-color: var(--color-cream-light);
+          padding: 1.4rem 1.75rem;
+          background-color: var(--color-cream);
           border-top: 1px solid var(--color-beige);
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
         }
 
         .summary-row {
           display: flex;
           justify-content: space-between;
-          font-size: 0.875rem;
-          margin-bottom: 0.5rem;
-          color: var(--color-charcoal-muted);
+          font-size: 0.88rem;
+          color: var(--color-charcoal);
         }
 
-        .summary-val {
-          color: var(--color-charcoal);
+        .multi-studio-badge {
+          font-size: 0.76rem;
+          color: var(--color-gold);
           font-weight: 600;
         }
 
         .free-tag {
           color: var(--color-success);
+          font-weight: 600;
         }
 
         .total-row {
           border-top: 1px solid var(--color-beige);
-          padding-top: 0.75rem;
-          margin-top: 0.75rem;
-          margin-bottom: 1.25rem;
-        }
-
-        .total-row .summary-label {
-          font-weight: 600;
-          color: var(--color-charcoal);
+          padding-top: 0.85rem;
+          margin-top: 0.25rem;
+          font-size: 1.15rem;
+          font-weight: 700;
         }
 
         .summary-total {
-          font-family: var(--font-heading);
-          font-size: 1.4rem;
-          font-weight: 700;
           color: var(--color-charcoal);
+        }
+
+        .drawer-cta-stack {
+          display: flex;
+          flex-direction: column;
+          gap: 0.6rem;
+          margin-top: 0.5rem;
         }
 
         .btn-checkout {
           width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
           padding: 0.95rem;
           font-size: 0.95rem;
+        }
+
+        .btn-continue-shopping {
+          background: none;
+          border: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.4rem;
+          color: var(--color-charcoal);
+          font-size: 0.84rem;
+          font-weight: 600;
+          cursor: pointer;
+          padding: 0.4rem;
+          transition: color var(--transition-fast);
+        }
+        .btn-continue-shopping:hover {
+          color: var(--color-gold);
         }
 
         .footer-guarantee {
@@ -557,13 +697,25 @@ export const CartDrawer = ({ onOpenCheckout }) => {
           align-items: center;
           justify-content: center;
           gap: 0.45rem;
-          font-size: 0.75rem;
-          color: #8C887B;
-          margin-top: 0.85rem;
+          font-size: 0.74rem;
+          color: var(--color-charcoal-muted);
+          margin-top: 0.25rem;
         }
 
         .shield-icon {
           color: var(--color-gold);
+        }
+
+        @media (max-width: 480px) {
+          .cart-drawer-card {
+            max-width: 100%;
+          }
+          .cart-drawer-header,
+          .cart-drawer-body,
+          .cart-drawer-footer {
+            padding-left: 1.25rem;
+            padding-right: 1.25rem;
+          }
         }
       `}</style>
     </div>

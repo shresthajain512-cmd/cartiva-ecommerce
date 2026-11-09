@@ -591,7 +591,10 @@ const AppContent = () => {
       />
 
       {/* 8. Slide-over Shopping Bag */}
-      <CartDrawer onOpenCheckout={() => setIsCheckoutOpen(true)} />
+      <CartDrawer
+        onOpenCheckout={() => setIsCheckoutOpen(true)}
+        onBrowseCatalogue={() => handleNavigate('catalogue')}
+      />
 
       {/* 9. Global Editorial Footer */}
       <Footer

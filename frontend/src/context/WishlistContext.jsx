@@ -4,21 +4,29 @@ const WishlistContext = createContext();
 const WISHLIST_STORAGE_KEY = 'cartiva_wishlist_v1';
 
 export const WishlistProvider = ({ children }) => {
+  // 1. Initial State with Safe Sanitization & Recovery
   const [wishlist, setWishlist] = useState(() => {
     try {
       const saved = localStorage.getItem(WISHLIST_STORAGE_KEY);
-      return saved ? JSON.parse(saved) : [];
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      if (!Array.isArray(parsed)) return [];
+
+      return parsed.filter(
+        (item) => item && (item._id || item.id) && item.title && !isNaN(Number(item.price))
+      );
     } catch (err) {
-      console.error('Failed to parse wishlist from localStorage:', err);
+      console.warn('Failed to parse wishlist from localStorage:', err.message);
       return [];
     }
   });
 
+  // 2. LocalStorage Persistence
   useEffect(() => {
     try {
       localStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(wishlist));
     } catch (err) {
-      console.error('Failed to persist wishlist to localStorage:', err);
+      console.warn('Failed to persist wishlist to localStorage:', err.message);
     }
   }, [wishlist]);
 
@@ -28,11 +36,26 @@ export const WishlistProvider = ({ children }) => {
   };
 
   const addToWishlist = (product) => {
-    if (!product || !product._id) return;
+    if (!product || (!product._id && !product.id)) return false;
+    const prodId = product._id || product.id;
+
+    let added = false;
     setWishlist((prev) => {
-      if (prev.some((item) => item._id === product._id)) return prev;
-      return [product, ...prev];
+      if (prev.some((item) => (item._id || item.id) === prodId)) {
+        return prev;
+      }
+      added = true;
+      return [
+        {
+          ...product,
+          _id: prodId,
+          sellerId: product.seller?._id || product.seller || product.sellerId || 'cartiva-artisan',
+          storeName: product.storeName || product.seller?.businessName || 'Verified Artisan Atelier'
+        },
+        ...prev
+      ];
     });
+    return added;
   };
 
   const removeFromWishlist = (productId) => {
@@ -41,9 +64,11 @@ export const WishlistProvider = ({ children }) => {
   };
 
   const toggleWishlist = (product) => {
-    if (!product || !product._id) return;
-    if (isInWishlist(product._id)) {
-      removeFromWishlist(product._id);
+    if (!product || (!product._id && !product.id)) return false;
+    const prodId = product._id || product.id;
+
+    if (isInWishlist(prodId)) {
+      removeFromWishlist(prodId);
       return false;
     } else {
       addToWishlist(product);
