@@ -44,7 +44,8 @@ export const ProductGrid = ({
   onToggleNewArrivals,
   onResetFilters,
   onOpenFilterDrawer,
-  onInspectProduct
+  onInspectProduct,
+  onSelectProduct
 }) => {
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
   const [itemsPerPage, setItemsPerPage] = useState(12);
@@ -322,6 +323,7 @@ export const ProductGrid = ({
                   key={prod._id}
                   product={prod}
                   onInspect={onInspectProduct}
+                  onSelect={onSelectProduct}
                   viewMode={viewMode}
                 />
               ))}

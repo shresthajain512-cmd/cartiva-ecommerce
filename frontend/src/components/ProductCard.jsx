@@ -5,7 +5,7 @@ import { useWishlist } from '../context/WishlistContext';
 import { useComparison } from '../context/ComparisonContext';
 import { useToast } from '../context/ToastContext';
 
-export const ProductCard = ({ product, onInspect, viewMode = 'grid' }) => {
+export const ProductCard = ({ product, onInspect, onSelect, viewMode = 'grid' }) => {
   const { addToCart } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
   const { isInCompare, toggleCompare } = useComparison();
@@ -17,6 +17,14 @@ export const ProductCard = ({ product, onInspect, viewMode = 'grid' }) => {
   );
 
   if (!product) return null;
+
+  const handleCardClick = () => {
+    if (onSelect) {
+      onSelect(product);
+    } else if (onInspect) {
+      onInspect(product);
+    }
+  };
 
   const isOutOfStock = product.stockCount === 0;
   const isLowStock = product.stockCount > 0 && product.stockCount <= 5;
@@ -62,12 +70,12 @@ export const ProductCard = ({ product, onInspect, viewMode = 'grid' }) => {
   return (
     <article
       className={`product-card ${viewMode === 'list' ? 'product-card-list' : ''}`}
-      onClick={() => onInspect(product)}
+      onClick={handleCardClick}
       role="button"
       tabIndex={0}
       aria-label={`View ${product.title}`}
       onKeyDown={(e) => {
-        if (e.key === 'Enter') onInspect(product);
+        if (e.key === 'Enter') handleCardClick();
       }}
     >
       {/* 1. Image Showcase Container */}

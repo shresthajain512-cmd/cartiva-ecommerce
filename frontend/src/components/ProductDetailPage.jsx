@@ -11,19 +11,25 @@ import {
   RotateCcw,
   Sparkles,
   ArrowLeft,
-  ChevronRight
+  ChevronRight,
+  Compass,
+  ExternalLink,
+  PackageCheck
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useComparison } from '../context/ComparisonContext';
 import { useToast } from '../context/ToastContext';
 import { useRecentlyViewed } from '../context/RecentlyViewedContext';
+import { fetchProductById } from '../services/api';
 
 export const ProductDetailPage = ({
-  product,
+  productId,
+  product: initialProduct,
   allProducts = [],
   onBack,
   onSelectProduct,
+  onSelectCategory,
   onNavigateToStorefront,
   onNavigateToCheckout
 }) => {
@@ -33,58 +39,172 @@ export const ProductDetailPage = ({
   const { addToast } = useToast();
   const { addRecentlyViewed } = useRecentlyViewed();
 
+  const [product, setProduct] = useState(initialProduct || null);
+  const [loading, setLoading] = useState(Boolean(!initialProduct && productId));
+  const [error, setError] = useState(null);
+
   const [quantity, setQuantity] = useState(1);
-  const [selectedVariant, setSelectedVariant] = useState('Standard');
-  const [selectedImage, setSelectedImage] = useState(product?.imageUrl);
+  const [selectedVariant, setSelectedVariant] = useState('Standard Edition');
+  const [selectedImage, setSelectedImage] = useState(initialProduct?.imageUrl || null);
   const [pincode, setPincode] = useState('');
   const [deliveryEstimate, setDeliveryEstimate] = useState(null);
   const [isZoomed, setIsZoomed] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
-  // Record this product in recently viewed upon mounting
+  // 1. Fetch product if productId is provided and either initialProduct is absent or has a different ID
+  useEffect(() => {
+    let isMounted = true;
+
+    if (initialProduct && (!productId || initialProduct._id === productId || initialProduct.id === productId)) {
+      setProduct(initialProduct);
+      setSelectedImage(initialProduct.imageUrl);
+      setLoading(false);
+      setError(null);
+      addRecentlyViewed(initialProduct);
+      return;
+    }
+
+    if (productId) {
+      setLoading(true);
+      setError(null);
+      fetchProductById(productId)
+        .then((data) => {
+          if (isMounted) {
+            if (data.success && data.product) {
+              setProduct(data.product);
+              setSelectedImage(data.product.imageUrl);
+              addRecentlyViewed(data.product);
+            } else {
+              setError('Product details not available');
+            }
+          }
+        })
+        .catch((err) => {
+          if (isMounted) {
+            console.warn('Product details fetch notice:', err.message);
+            setError(err.message || 'Product not found');
+          }
+        })
+        .finally(() => {
+          if (isMounted) setLoading(false);
+        });
+    } else {
+      setLoading(false);
+      setError('No product selected');
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [productId, initialProduct]);
+
+  // Reset image, quantity and scroll to top when product changes
   useEffect(() => {
     if (product) {
-      addRecentlyViewed(product);
       setSelectedImage(product.imageUrl);
       setQuantity(1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }, [product]);
+  }, [product?._id]);
 
-  if (!product) return null;
+  // 2. Loading Skeleton State
+  if (loading) {
+    return (
+      <div className="product-detail-page animate-fade-in">
+        <div className="container">
+          <div className="detail-breadcrumbs-skeleton skeleton-box" style={{ height: '24px', width: '280px', marginBottom: '2rem' }} />
+          <div className="product-detail-layout">
+            <div className="skeleton-box" style={{ aspectRatio: '1/1', width: '100%', borderRadius: 'var(--radius-md)' }} />
+            <div className="skeleton-detail-info" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div className="skeleton-box" style={{ height: '20px', width: '160px' }} />
+              <div className="skeleton-box" style={{ height: '42px', width: '85%' }} />
+              <div className="skeleton-box" style={{ height: '36px', width: '220px' }} />
+              <div className="skeleton-box" style={{ height: '28px', width: '140px' }} />
+              <div className="skeleton-box" style={{ height: '90px', width: '100%' }} />
+              <div className="skeleton-box" style={{ height: '52px', width: '100%' }} />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  const isOutOfStock = product.stockCount === 0;
-  const isLowStock = product.stockCount > 0 && product.stockCount <= 5;
+  // 3. Error or Not Found State
+  if (error || !product) {
+    return (
+      <div className="product-detail-page animate-fade-in">
+        <div className="container" style={{ padding: '6rem 1rem', textAlign: 'center' }}>
+          <div className="catalogue-empty-state" style={{ maxWidth: '520px', margin: '0 auto' }}>
+            <div className="empty-state-icon" style={{ marginBottom: '1.5rem' }}>
+              <Compass size={56} strokeWidth={1.5} color="var(--color-gold)" />
+            </div>
+            <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '2rem', marginBottom: '0.75rem', color: 'var(--color-charcoal)' }}>
+              Piece Not Found
+            </h2>
+            <p style={{ color: 'var(--color-charcoal-muted)', fontSize: '0.98rem', lineHeight: 1.6, marginBottom: '2rem' }}>
+              {error || 'The requested atelier piece does not exist, has been archived, or is currently unavailable.'}
+            </p>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={onBack}
+              style={{ padding: '0.85rem 2rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              <ArrowLeft size={16} />
+              <span>Return to Catalogue</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Stock calculations
+  const maxStock = Math.max(0, Number(product.stockCount) || 0);
+  const isOutOfStock = maxStock === 0;
+  const isLowStock = maxStock > 0 && maxStock <= 5;
   const wishlisted = isInWishlist(product._id);
   const compared = isInCompare(product._id);
 
-  const hasDiscount = product.originalPrice && product.originalPrice > product.price;
+  // Discount calculation strictly based on real database numbers
+  const hasDiscount = Boolean(product.originalPrice && product.originalPrice > product.price);
   const discountPercent = hasDiscount
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : 0;
 
-  // Gallery images (main image + derived curated detail shots)
-  const galleryImages = [
-    product.imageUrl,
-    // Complementary angle / texture shots from reliable Unsplash studio assets
+  // Gallery images with curated detail shots
+  const studioFallbacks = [
     'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=800&q=80',
     'https://images.unsplash.com/photo-1508746829417-e6f548d8d6ed?auto=format&fit=crop&w=800&q=80'
   ];
+  const galleryImages = [
+    product.imageUrl,
+    ...(Array.isArray(product.images) && product.images.length > 0 ? product.images : studioFallbacks)
+  ].filter((img, idx, arr) => img && arr.indexOf(img) === idx);
 
-  // Similar products in the same category
-  const similarProducts = allProducts
-    .filter((p) => p.category === product.category && p._id !== product._id)
-    .slice(0, 4);
+  // Similar products in the same category (guaranteed 4 pieces)
+  let similarProducts = allProducts.filter(
+    (p) => p.category === product.category && (p._id !== product._id && p.id !== product._id)
+  );
+  if (similarProducts.length < 4) {
+    const filler = allProducts.filter(
+      (p) => p._id !== product._id && !similarProducts.some((sp) => sp._id === p._id)
+    );
+    similarProducts = [...similarProducts, ...filler].slice(0, 4);
+  } else {
+    similarProducts = similarProducts.slice(0, 4);
+  }
 
-  // Frequently bought together companion item
+  // Companion piece for bundle
   const companionProduct = allProducts.find(
-    (p) => p._id !== product._id && (p.category === product.category || p.category === 'Other')
+    (p) => p._id !== product._id && (p.category === product.category || p.category === 'Home & Kitchen' || p.category === 'Other')
   );
 
+  // Actions
   const handleAddToCart = () => {
     if (isOutOfStock) return;
     addToCart(product, quantity);
-    addToast(`Added ${quantity} × "${product.title}" to bag`, 'success');
+    addToast(`Added ${quantity} × "${product.title}" to your shopping bag`, 'success');
   };
 
   const handleBuyNow = () => {
@@ -95,13 +215,23 @@ export const ProductDetailPage = ({
     }
   };
 
+  const handleQtyChange = (delta) => {
+    if (isOutOfStock) return;
+    const nextVal = quantity + delta;
+    if (nextVal >= 1 && nextVal <= maxStock) {
+      setQuantity(nextVal);
+    } else if (nextVal > maxStock) {
+      addToast(`Only ${maxStock} pieces currently available in studio inventory`, 'warning');
+    }
+  };
+
   const handleCheckDelivery = (e) => {
     e.preventDefault();
     if (!pincode.trim() || pincode.trim().length < 6) {
       addToast('Please enter a valid 6-digit PIN code', 'warning');
       return;
     }
-    setDeliveryEstimate('Estimated delivery within 2–4 business days via insured express courier');
+    setDeliveryEstimate('Estimated dispatch within 24h. Express delivery in 2–4 business days.');
   };
 
   const handleMouseMove = (e) => {
@@ -111,20 +241,20 @@ export const ProductDetailPage = ({
     setMousePos({ x, y });
   };
 
-  const bundleTotal = companionProduct
-    ? product.price + companionProduct.price
-    : product.price;
+  const sellerId = product.seller?._id || product.seller;
+  const storeName = product.storeName || product.seller?.businessName || 'Verified Artisan Atelier';
 
-  const handleAddBundleToCart = () => {
-    addToCart(product, 1);
-    if (companionProduct) {
-      addToCart(companionProduct, 1);
-    }
-    addToast(`Added editorial bundle to your bag!`, 'success');
-  };
+  // Safe specs parsing
+  const specsEntries = product.specs
+    ? product.specs instanceof Map
+      ? Array.from(product.specs.entries())
+      : typeof product.specs === 'object'
+      ? Object.entries(product.specs)
+      : []
+    : [];
 
   return (
-    <div className="product-detail-page">
+    <div className="product-detail-page animate-fade-in">
       <div className="container">
         {/* Breadcrumb Navigation */}
         <nav className="detail-breadcrumbs" aria-label="Breadcrumb">
@@ -133,14 +263,26 @@ export const ProductDetailPage = ({
             <span>Catalogue</span>
           </button>
           <ChevronRight size={14} className="breadcrumb-separator" />
-          <span className="breadcrumb-cat">{product.category}</span>
+          {onSelectCategory ? (
+            <button
+              type="button"
+              className="breadcrumb-btn breadcrumb-category-link"
+              onClick={() => onSelectCategory(product.category)}
+            >
+              {product.category}
+            </button>
+          ) : (
+            <span className="breadcrumb-cat">{product.category}</span>
+          )}
           <ChevronRight size={14} className="breadcrumb-separator" />
-          <span className="breadcrumb-current">{product.title}</span>
+          <span className="breadcrumb-current" title={product.title}>
+            {product.title}
+          </span>
         </nav>
 
         {/* Main Showcase Layout (Gallery + Buying Column) */}
         <div className="product-detail-layout">
-          {/* Left Column: Image Gallery with Zoom */}
+          {/* Left Column: Image Gallery with Interactive Zoom */}
           <div className="product-gallery-section">
             <div
               className="main-image-viewport"
@@ -149,7 +291,7 @@ export const ProductDetailPage = ({
               onMouseMove={handleMouseMove}
             >
               <img
-                src={selectedImage}
+                src={selectedImage || product.imageUrl}
                 alt={product.title}
                 className="detail-main-img"
                 style={
@@ -174,24 +316,26 @@ export const ProductDetailPage = ({
 
               <span className="zoom-hint-badge">
                 <Sparkles size={12} />
-                <span>Hover to inspect fine detail</span>
+                <span>Hover to inspect fine craftsmanship</span>
               </span>
             </div>
 
             {/* Thumbnail Strip */}
-            <div className="gallery-thumbnail-strip">
-              {galleryImages.map((img, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  className={`gallery-thumb-btn ${selectedImage === img ? 'active' : ''}`}
-                  onClick={() => setSelectedImage(img)}
-                  aria-label={`View photo angle ${idx + 1}`}
-                >
-                  <img src={img} alt={`Angle ${idx + 1}`} />
-                </button>
-              ))}
-            </div>
+            {galleryImages.length > 1 && (
+              <div className="gallery-thumbnail-strip">
+                {galleryImages.map((img, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    className={`gallery-thumb-btn ${selectedImage === img ? 'active' : ''}`}
+                    onClick={() => setSelectedImage(img)}
+                    aria-label={`View photo angle ${idx + 1}`}
+                  >
+                    <img src={img} alt={`${product.title} perspective ${idx + 1}`} />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Right Column: Information, Specs & Purchase Box */}
@@ -201,17 +345,24 @@ export const ProductDetailPage = ({
               <button
                 type="button"
                 className="detail-store-link"
-                onClick={() => onNavigateToStorefront && onNavigateToStorefront(product.seller?._id || product.seller)}
+                onClick={() => onNavigateToStorefront && sellerId && onNavigateToStorefront(sellerId)}
+                title={`Visit ${storeName} Storefront`}
               >
                 <Store size={15} />
-                <span>{product.storeName || product.seller?.businessName || 'Verified Artisan'}</span>
+                <span>{storeName}</span>
                 <span className="verified-badge">Verified Maker</span>
               </button>
 
               <div className="detail-rating-stars">
                 <Star size={15} fill="var(--color-gold)" color="var(--color-gold)" />
-                <span className="rating-value">{product.rating ? Number(product.rating).toFixed(1) : '4.8'}</span>
-                <span className="rating-count">({product.reviewsCount || 24} verified artisan reviews)</span>
+                <span className="rating-value">
+                  {product.rating ? Number(product.rating).toFixed(1) : '4.9'}
+                </span>
+                <span className="rating-count">
+                  {product.reviewsCount
+                    ? `(${product.reviewsCount} verified reviews)`
+                    : '(Authentic Maker)'}
+                </span>
               </div>
             </div>
 
@@ -230,7 +381,9 @@ export const ProductDetailPage = ({
                   </span>
                 )}
               </div>
-              <span className="detail-tax-note">Inclusive of all duties, GST, and domestic packaging</span>
+              <span className="detail-tax-note">
+                Inclusive of all taxes, duties, and insured studio packaging
+              </span>
             </div>
 
             {/* Stock & Availability Pill */}
@@ -239,11 +392,11 @@ export const ProductDetailPage = ({
                 <span className="stock-status-pill out-of-stock">Currently Sold Out</span>
               ) : isLowStock ? (
                 <span className="stock-status-pill low-stock">
-                  Limited Batch — Only {product.stockCount} pieces remaining
+                  Limited Batch — Only {maxStock} pieces remaining in studio inventory
                 </span>
               ) : (
                 <span className="stock-status-pill in-stock">
-                  In Stock — Ready for immediate studio dispatch ({product.stockCount} available)
+                  In Stock — Ready for immediate studio dispatch ({maxStock} available)
                 </span>
               )}
             </div>
@@ -254,9 +407,9 @@ export const ProductDetailPage = ({
               <p className="detail-description-text">{product.description}</p>
             </div>
 
-            {/* Variant Options (Edition / Material) */}
+            {/* Variant Options (Edition / Finish) */}
             <div className="detail-variants-group">
-              <span className="variants-label">Edition / Finish:</span>
+              <span className="variants-label">Edition / Studio Finish:</span>
               <div className="variants-buttons-row">
                 {['Standard Edition', 'Artisan Matte Studio Finish', 'Raw Bespoke Finish'].map((v) => (
                   <button
@@ -279,17 +432,19 @@ export const ProductDetailPage = ({
                   <button
                     type="button"
                     className="qty-btn"
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    onClick={() => handleQtyChange(-1)}
                     disabled={quantity <= 1 || isOutOfStock}
+                    aria-label="Decrease quantity"
                   >
                     –
                   </button>
-                  <span id="detail-qty" className="qty-num">{quantity}</span>
+                  <span id="detail-qty" className="qty-num">{isOutOfStock ? 0 : quantity}</span>
                   <button
                     type="button"
                     className="qty-btn"
-                    onClick={() => setQuantity(Math.min(product.stockCount || 99, quantity + 1))}
-                    disabled={quantity >= product.stockCount || isOutOfStock}
+                    onClick={() => handleQtyChange(1)}
+                    disabled={quantity >= maxStock || isOutOfStock}
+                    aria-label="Increase quantity"
                   >
                     +
                   </button>
@@ -324,10 +479,14 @@ export const ProductDetailPage = ({
                   className={`secondary-action-btn ${wishlisted ? 'active' : ''}`}
                   onClick={() => {
                     const added = toggleWishlist(product);
-                    addToast(added ? 'Added to Wishlist' : 'Removed from Wishlist', 'info');
+                    addToast(added ? 'Saved to Wishlist' : 'Removed from Wishlist', 'info');
                   }}
                 >
-                  <Heart size={16} fill={wishlisted ? '#B23A22' : 'none'} color={wishlisted ? '#B23A22' : 'currentColor'} />
+                  <Heart
+                    size={16}
+                    fill={wishlisted ? '#B23A22' : 'none'}
+                    color={wishlisted ? '#B23A22' : 'currentColor'}
+                  />
                   <span>{wishlisted ? 'Saved in Wishlist' : 'Save to Wishlist'}</span>
                 </button>
 
@@ -391,29 +550,96 @@ export const ProductDetailPage = ({
         </div>
 
         {/* Specifications Table Section */}
-        {product.specs && Object.keys(product.specs).length > 0 && (
-          <section className="detail-specs-section">
-            <h3 className="section-specs-title">Technical & Material Specifications</h3>
-            <div className="specs-table-container">
-              <table className="specs-table">
-                <tbody>
-                  {Object.entries(product.specs).map(([specKey, specVal]) => (
-                    <tr key={specKey}>
-                      <th className="spec-name">{specKey}</th>
-                      <td className="spec-value">{specVal}</td>
-                    </tr>
-                  ))}
-                  <tr>
-                    <th className="spec-name">Category</th>
-                    <td className="spec-value">{product.category}</td>
+        <section className="detail-specs-section">
+          <h3 className="section-specs-title">Technical & Material Specifications</h3>
+          <div className="specs-table-container">
+            <table className="specs-table">
+              <tbody>
+                <tr>
+                  <th className="spec-name">Product Name</th>
+                  <td className="spec-value">{product.title}</td>
+                </tr>
+                <tr>
+                  <th className="spec-name">Primary Category</th>
+                  <td className="spec-value">{product.category}</td>
+                </tr>
+                <tr>
+                  <th className="spec-name">Artisan Atelier</th>
+                  <td className="spec-value">
+                    {storeName}{' '}
+                    {sellerId && onNavigateToStorefront && (
+                      <button
+                        type="button"
+                        onClick={() => onNavigateToStorefront(sellerId)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--color-gold)',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          marginLeft: '0.5rem',
+                          textDecoration: 'underline'
+                        }}
+                      >
+                        (View Storefront)
+                      </button>
+                    )}
+                  </td>
+                </tr>
+                <tr>
+                  <th className="spec-name">Stock Status</th>
+                  <td className="spec-value">
+                    {isOutOfStock
+                      ? 'Archived / Sold Out'
+                      : `${maxStock} units currently catalogued`}
+                  </td>
+                </tr>
+                {specsEntries.map(([k, v]) => (
+                  <tr key={k}>
+                    <th className="spec-name">{k}</th>
+                    <td className="spec-value">{String(v)}</td>
                   </tr>
-                  <tr>
-                    <th className="spec-name">Studio Provenance</th>
-                    <td className="spec-value">{product.storeName || 'Verified Artisan Atelier'}</td>
-                  </tr>
-                </tbody>
-              </table>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* About the Studio Showcase Card */}
+        {sellerId && (
+          <section className="about-studio-section" style={{
+            backgroundColor: 'var(--color-white)',
+            border: '1px solid var(--color-beige)',
+            borderRadius: 'var(--radius-md)',
+            padding: '2.5rem',
+            marginBottom: '4rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '2rem',
+            flexWrap: 'wrap'
+          }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                <Store size={22} color="var(--color-gold)" />
+                <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.4rem', margin: 0, color: 'var(--color-charcoal)' }}>
+                  Handcrafted by {storeName}
+                </h3>
+                <span className="verified-badge">Verified Maker</span>
+              </div>
+              <p style={{ color: 'var(--color-charcoal-muted)', fontSize: '0.92rem', maxWidth: '640px', lineHeight: 1.6, margin: 0 }}>
+                Every creation from {storeName} adheres to Cartiva's authentic multi-vendor standards, sustainably crafted and shipped directly from their artisan studio.
+              </p>
             </div>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => onNavigateToStorefront && onNavigateToStorefront(sellerId)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}
+            >
+              <span>Visit Artisan Storefront</span>
+              <ExternalLink size={15} />
+            </button>
           </section>
         )}
 
@@ -434,7 +660,7 @@ export const ProductDetailPage = ({
 
                 <div
                   className="bundle-prod-item clickable"
-                  onClick={() => onSelectProduct(companionProduct)}
+                  onClick={() => onSelectProduct && onSelectProduct(companionProduct)}
                 >
                   <img src={companionProduct.imageUrl} alt={companionProduct.title} />
                   <span className="bundle-prod-name">{companionProduct.title}</span>
@@ -445,12 +671,18 @@ export const ProductDetailPage = ({
               <div className="bundle-total-action">
                 <div className="bundle-total-group">
                   <span className="total-label">Combined Bundle Total:</span>
-                  <span className="total-price">₹{Number(bundleTotal).toLocaleString('en-IN')}</span>
+                  <span className="total-price">
+                    ₹{Number(product.price + companionProduct.price).toLocaleString('en-IN')}
+                  </span>
                 </div>
                 <button
                   type="button"
                   className="btn-primary btn-add-bundle"
-                  onClick={handleAddBundleToCart}
+                  onClick={() => {
+                    addToCart(product, 1);
+                    addToCart(companionProduct, 1);
+                    addToast(`Added editorial bundle to your bag!`, 'success');
+                  }}
                 >
                   <ShoppingBag size={16} />
                   <span>Add Both to Bag</span>
@@ -460,23 +692,30 @@ export const ProductDetailPage = ({
           </section>
         )}
 
-        {/* Similar Products */}
+        {/* Related Products Grid */}
         {similarProducts.length > 0 && (
           <section className="similar-products-section">
             <div className="similar-header">
-              <h3 className="similar-title">More in {product.category}</h3>
-              <p className="similar-subtitle">Handcrafted pieces sharing similar craftsmanship traditions</p>
+              <h3 className="similar-title">More Handcrafted Pieces</h3>
+              <p className="similar-subtitle">Curated creations sharing similar craftsmanship standards</p>
             </div>
             <div className="similar-grid">
               {similarProducts.map((simProd) => (
                 <div
                   key={simProd._id}
                   className="similar-card"
-                  onClick={() => onSelectProduct(simProd)}
+                  onClick={() => onSelectProduct && onSelectProduct(simProd)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && onSelectProduct) onSelectProduct(simProd);
+                  }}
                 >
                   <img src={simProd.imageUrl} alt={simProd.title} />
                   <div className="similar-info">
-                    <span className="similar-store">{simProd.storeName}</span>
+                    <span className="similar-store">
+                      {simProd.storeName || simProd.seller?.businessName || 'Artisan Atelier'}
+                    </span>
                     <h4 className="similar-name">{simProd.title}</h4>
                     <span className="similar-price">₹{Number(simProd.price).toLocaleString('en-IN')}</span>
                   </div>

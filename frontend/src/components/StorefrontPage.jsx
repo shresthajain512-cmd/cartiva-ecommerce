@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Store, MapPin, CheckCircle, Star, ArrowLeft, SlidersHorizontal, Package } from 'lucide-react';
+import {
+  Store,
+  MapPin,
+  CheckCircle,
+  Star,
+  ArrowLeft,
+  Package,
+  Layers,
+  Sparkles,
+  ExternalLink
+} from 'lucide-react';
 import { ProductCard } from './ProductCard';
 import { fetchStorefront } from '../services/api';
 
@@ -68,42 +78,34 @@ export const StorefrontPage = ({
       try {
         if (sellerId) {
           const data = await fetchStorefront(sellerId);
-          if (isMounted && data.success) {
-            setStoreData(data.store);
-            setStoreProducts(data.products || []);
+          if (isMounted) {
+            if (data.success && data.store) {
+              setStoreData(data.store);
+              setStoreProducts(data.products || []);
+            } else {
+              setError('Artisan Studio Not Found');
+            }
           }
         } else {
-          // Fallback to first available seller from products
-          const sampleProd = allProducts.find((p) => p.storeName);
+          // Fallback to first available seller from loaded products if no sellerId was provided
+          const sampleProd = allProducts.find((p) => p.seller?._id || p.seller);
           if (sampleProd) {
-            setStoreData({
-              id: sampleProd.seller?._id || sampleProd.seller,
-              name: sampleProd.seller?.name || 'Verified Maker',
-              businessName: sampleProd.storeName
-            });
-            setStoreProducts(allProducts.filter((p) => p.storeName === sampleProd.storeName));
+            const sid = sampleProd.seller?._id || sampleProd.seller;
+            const data = await fetchStorefront(sid);
+            if (isMounted && data.success && data.store) {
+              setStoreData(data.store);
+              setStoreProducts(data.products || []);
+            }
+          } else {
+            setError('No artisan storefront specified');
           }
         }
       } catch (err) {
-        console.error('Storefront load error:', err);
-        // Fallback gracefully to client filtering if API had seller ID format issue
-        const matched = allProducts.filter(
-          (p) =>
-            p.seller?._id === sellerId ||
-            p.seller === sellerId ||
-            p.storeName === sellerId
-        );
         if (isMounted) {
-          if (matched.length > 0) {
-            setStoreData({
-              id: sellerId,
-              name: matched[0].seller?.name || 'Artisan Maker',
-              businessName: matched[0].storeName
-            });
-            setStoreProducts(matched);
-          } else {
-            setError(err.message || 'Storefront could not be loaded.');
-          }
+          console.warn('Storefront load notice:', err.message);
+          setError(err.message || 'Artisan Studio Not Found');
+          setStoreData(null);
+          setStoreProducts([]);
         }
       } finally {
         if (isMounted) setLoading(false);
@@ -116,18 +118,74 @@ export const StorefrontPage = ({
     };
   }, [sellerId, allProducts]);
 
-  const businessName = storeData?.businessName || 'Verified Studio';
+  // Loading Skeleton State
+  if (loading) {
+    return (
+      <div className="storefront-page animate-fade-in">
+        <div className="storefront-hero-banner" style={{ backgroundColor: 'var(--color-beige)', height: '260px' }}>
+          <div className="storefront-banner-overlay">
+            <div className="container">
+              <button type="button" className="storefront-back-btn" onClick={onBack}>
+                <ArrowLeft size={16} />
+                <span>Back to Catalogue</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="container storefront-container" style={{ padding: '2rem 1rem 5rem' }}>
+          <div className="skeleton-box" style={{ height: '140px', width: '100%', borderRadius: 'var(--radius-md)', marginBottom: '3rem' }} />
+          <div className="products-grid">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="product-skeleton-card" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error / Studio Not Found State
+  if (error || !storeData) {
+    return (
+      <div className="storefront-page animate-fade-in">
+        <div className="container storefront-container" style={{ textAlign: 'center', padding: '6rem 1rem' }}>
+          <div className="catalogue-empty-state" style={{ maxWidth: '520px', margin: '0 auto' }}>
+            <div className="empty-state-icon" style={{ marginBottom: '1.5rem' }}>
+              <Store size={56} strokeWidth={1.5} color="var(--color-gold)" />
+            </div>
+            <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '2rem', marginBottom: '0.75rem', color: 'var(--color-charcoal)' }}>
+              Artisan Studio Not Found
+            </h2>
+            <p style={{ color: 'var(--color-charcoal-muted)', fontSize: '0.98rem', lineHeight: 1.6, marginBottom: '2rem' }}>
+              {error || 'This artisan studio does not exist, has been archived, or is awaiting marketplace verification.'}
+            </p>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={onBack}
+              style={{ padding: '0.85rem 2rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              <ArrowLeft size={16} />
+              <span>Return to Marketplace Catalogue</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const businessName = storeData.businessName || storeData.name || 'Verified Atelier';
   const story = ARTISAN_STORIES[businessName] || {
-    location: 'Direct Maker Studio',
+    location: 'Independent Maker Studio',
     founded: '2020',
-    bio: 'Dedicated independent maker crafting authentic small-batch products for the Cartiva community.',
+    bio: `${businessName} is an approved independent Cartiva artisan atelier dedicated to small-batch craftsmanship, transparent provenance, and sustainable material sourcing.`,
     banner: 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=1600&q=80',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80'
   };
 
   const storeCategories = [
     'All',
-    ...Array.from(new Set(storeProducts.map((p) => p.category)))
+    ...Array.from(new Set(storeProducts.map((p) => p.category).filter(Boolean)))
   ];
 
   const filteredStoreProducts =
@@ -136,7 +194,7 @@ export const StorefrontPage = ({
       : storeProducts.filter((p) => p.category === selectedStoreCategory);
 
   return (
-    <div className="storefront-page">
+    <div className="storefront-page animate-fade-in">
       {/* Banner Section */}
       <div
         className="storefront-hero-banner"
@@ -184,18 +242,18 @@ export const StorefrontPage = ({
           </div>
         </div>
 
-        {/* Store Catalogue Navigation & Category Pills */}
+        {/* Store Catalogue Navigation & Category Filter Pills */}
         <div className="store-catalogue-header">
           <div className="store-header-info">
             <h2 className="store-catalogue-title">
               Studio Catalogue ({filteredStoreProducts.length})
             </h2>
             <p className="store-catalogue-sub">
-              Browse original pieces made exclusively in small batches by {businessName}.
+              Showing {filteredStoreProducts.length} authentic {filteredStoreProducts.length === 1 ? 'creation' : 'creations'} handcrafted by {businessName}.
             </p>
           </div>
 
-          {storeCategories.length > 2 && (
+          {storeCategories.length > 1 && (
             <div className="store-category-pills">
               {storeCategories.map((cat) => (
                 <button
@@ -212,17 +270,17 @@ export const StorefrontPage = ({
         </div>
 
         {/* Store Products Grid */}
-        {loading ? (
-          <div className="products-grid">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="product-skeleton-card" />
-            ))}
-          </div>
-        ) : error ? (
-          <div className="catalogue-alert-state">
-            <p>{error}</p>
-            <button type="button" className="btn-primary" onClick={onBack}>
-              Return to Catalogue
+        {filteredStoreProducts.length === 0 ? (
+          <div className="catalogue-alert-state" style={{ padding: '4rem 1rem', textAlign: 'center' }}>
+            <p style={{ color: 'var(--color-charcoal-muted)', marginBottom: '1.5rem' }}>
+              No pieces currently catalogued in this studio category.
+            </p>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => setSelectedStoreCategory('All')}
+            >
+              View All Studio Pieces
             </button>
           </div>
         ) : (

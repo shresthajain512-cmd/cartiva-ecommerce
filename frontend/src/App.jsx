@@ -42,23 +42,29 @@ import { CartDrawer } from './components/CartDrawer';
 import { fetchProducts, fetchCategories } from './services/api';
 
 const AppContent = () => {
-  const getViewFromHash = () => {
-    const hash = window.location.hash.replace(/^#\/?/, '').split('?')[0];
+  const getHashInfo = () => {
+    const raw = window.location.hash.replace(/^#\/?/, '');
+    const [viewPart, queryPart] = raw.split('?');
     const validViews = ['home', 'catalogue', 'product-detail', 'wishlist', 'collections', 'artisans', 'storefront', 'offers', 'account'];
-    return validViews.includes(hash) ? hash : 'home';
+    const view = validViews.includes(viewPart) ? viewPart : 'home';
+    const params = new URLSearchParams(queryPart || '');
+    const id = params.get('id');
+    return { view, id };
   };
 
-  // Navigation View: 'home' | 'catalogue' | 'product-detail' | 'wishlist' | 'collections' | 'artisans' | 'storefront' | 'offers' | 'account'
-  const [currentView, setCurrentView] = useState(getViewFromHash);
+  const initialHash = getHashInfo();
 
-  useEffect(() => {
-    const handleHashChange = () => {
-      const view = getViewFromHash();
-      setCurrentView(view);
-    };
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []);
+  // Navigation View: 'home' | 'catalogue' | 'product-detail' | 'wishlist' | 'collections' | 'artisans' | 'storefront' | 'offers' | 'account'
+  const [currentView, setCurrentView] = useState(initialHash.view);
+
+  // Active Selected Product & Storefront
+  const [selectedProductId, setSelectedProductId] = useState(
+    initialHash.view === 'product-detail' ? initialHash.id : null
+  );
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedStoreSellerId, setSelectedStoreSellerId] = useState(
+    initialHash.view === 'storefront' ? initialHash.id : null
+  );
 
   // Products Data
   const [products, setProducts] = useState([]);
@@ -67,15 +73,19 @@ const AppContent = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Active Selected Product & Storefront
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [selectedStoreSellerId, setSelectedStoreSellerId] = useState(null);
-
   useEffect(() => {
-    if (currentView === 'product-detail' && !selectedProduct && allProducts.length > 0) {
-      setSelectedProduct(allProducts[0]);
-    }
-  }, [currentView, selectedProduct, allProducts]);
+    const handleHashChange = () => {
+      const { view, id } = getHashInfo();
+      setCurrentView(view);
+      if (view === 'product-detail' && id) {
+        setSelectedProductId(id);
+      } else if (view === 'storefront' && id) {
+        setSelectedStoreSellerId(id);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   // Filter & Search State
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -254,9 +264,19 @@ const AppContent = () => {
   ]);
 
   // Navigation handlers
-  const handleNavigate = (view) => {
-    window.location.hash = view === 'home' ? '' : `#${view}`;
+  const handleNavigate = (view, id = null) => {
+    let newHash = '';
+    if (view !== 'home') {
+      newHash = id ? `#${view}?id=${id}` : `#${view}`;
+    }
+    window.location.hash = newHash;
     setCurrentView(view);
+    if (view === 'product-detail') {
+      setSelectedProductId(id);
+    }
+    if (view === 'storefront') {
+      setSelectedStoreSellerId(id);
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -293,13 +313,18 @@ const AppContent = () => {
   };
 
   const handleViewFullDetails = (prod) => {
-    setSelectedProduct(prod);
-    handleNavigate('product-detail');
+    const prodId = typeof prod === 'string' ? prod : (prod?._id || prod?.id);
+    if (typeof prod === 'object' && prod !== null) {
+      setSelectedProduct(prod);
+    }
+    setSelectedProductId(prodId);
+    handleNavigate('product-detail', prodId);
   };
 
   const handleNavigateToStorefront = (sellerId) => {
-    setSelectedStoreSellerId(sellerId);
-    handleNavigate('storefront');
+    const sId = typeof sellerId === 'string' ? sellerId : (sellerId?._id || sellerId?.id);
+    setSelectedStoreSellerId(sId);
+    handleNavigate('storefront', sId);
   };
 
   const handleExploreCollection = (col) => {
@@ -440,6 +465,7 @@ const AppContent = () => {
                   onResetFilters={handleResetFilters}
                   onOpenFilterDrawer={() => setIsFilterDrawerOpen(true)}
                   onInspectProduct={handleInspectProduct}
+                  onSelectProduct={handleViewFullDetails}
                 />
               </div>
             </div>
@@ -453,12 +479,14 @@ const AppContent = () => {
         )}
 
         {/* VIEW: PRODUCT DETAIL */}
-        {currentView === 'product-detail' && selectedProduct && (
+        {currentView === 'product-detail' && (
           <ProductDetailPage
+            productId={selectedProductId}
             product={selectedProduct}
             allProducts={allProducts}
             onBack={() => handleNavigate('catalogue')}
             onSelectProduct={handleViewFullDetails}
+            onSelectCategory={handleSelectCategory}
             onNavigateToStorefront={handleNavigateToStorefront}
             onNavigateToCheckout={() => setIsCheckoutOpen(true)}
           />

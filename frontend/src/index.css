@@ -2686,6 +2686,28 @@ img {
   color: var(--color-charcoal);
   cursor: pointer;
   font-weight: 600;
+  transition: color var(--transition-fast);
+}
+.breadcrumb-btn:hover {
+  color: var(--color-gold);
+}
+
+.breadcrumb-category-link {
+  color: var(--color-charcoal-muted);
+  font-weight: 500;
+}
+.breadcrumb-category-link:hover {
+  color: var(--color-gold);
+  text-decoration: underline;
+}
+
+.breadcrumb-current {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 380px;
+  color: var(--color-charcoal);
+  font-weight: 600;
 }
 
 .product-detail-layout {
