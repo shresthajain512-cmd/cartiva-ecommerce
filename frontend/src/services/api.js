@@ -105,3 +105,147 @@ export const checkBackendHealth = async () => {
     return false;
   }
 };
+
+/**
+ * ========================================================
+ * ORDERS & CHECKOUT API SERVICES (DAY 11)
+ * ========================================================
+ */
+
+/**
+ * Submit verified checkout order to backend
+ */
+export const createOrderApi = async (orderPayload, token) => {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/orders`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(orderPayload)
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || `Failed to create order (HTTP ${response.status})`);
+  }
+  return data;
+};
+
+/**
+ * Fetch customer's personal order history
+ */
+export const fetchMyOrdersApi = async (token) => {
+  const headers = {};
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/orders/my-orders`, {
+    headers
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || `Failed to fetch order history (HTTP ${response.status})`);
+  }
+  return data;
+};
+
+/**
+ * Fetch a single order by MongoDB ObjectId or human-readable orderReference
+ */
+export const fetchOrderByIdApi = async (idOrRef, token) => {
+  const headers = {};
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/orders/${idOrRef}`, {
+    headers
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || `Order not found (HTTP ${response.status})`);
+  }
+  return data;
+};
+
+/**
+ * Fetch incoming orders isolated to authenticated seller's products only
+ */
+export const fetchSellerOrdersApi = async (token) => {
+  const headers = {};
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/orders/seller/my-orders`, {
+    headers
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || `Failed to fetch seller orders (HTTP ${response.status})`);
+  }
+  return data;
+};
+
+/**
+ * Update order status (Admin or participating seller)
+ */
+export const updateOrderStatusApi = async (orderId, updateData, token) => {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/orders/${orderId}/status`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(updateData)
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || `Failed to update status (HTTP ${response.status})`);
+  }
+  return data;
+};
+
+/**
+ * Authenticate user login
+ */
+export const loginApi = async (email, password) => {
+  const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password })
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || 'Login failed');
+  }
+  return data;
+};
+
+/**
+ * Register new customer or seller
+ */
+export const registerApi = async (userData) => {
+  const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(userData)
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || 'Registration failed');
+  }
+  return data;
+};

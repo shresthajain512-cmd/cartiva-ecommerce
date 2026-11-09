@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
 import { ComparisonProvider } from './context/ComparisonContext';
@@ -45,7 +46,7 @@ const AppContent = () => {
   const getHashInfo = () => {
     const raw = window.location.hash.replace(/^#\/?/, '');
     const [viewPart, queryPart] = raw.split('?');
-    const validViews = ['home', 'catalogue', 'product-detail', 'wishlist', 'collections', 'artisans', 'storefront', 'offers', 'account'];
+    const validViews = ['home', 'catalogue', 'product-detail', 'wishlist', 'collections', 'artisans', 'storefront', 'offers', 'account', 'checkout'];
     const view = validViews.includes(viewPart) ? viewPart : 'home';
     const params = new URLSearchParams(queryPart || '');
     const id = params.get('id');
@@ -579,9 +580,14 @@ const AppContent = () => {
 
       {/* 6. Checkout Modal */}
       <CheckoutModal
-        isOpen={isCheckoutOpen}
-        onClose={() => setIsCheckoutOpen(false)}
+        isOpen={isCheckoutOpen || currentView === 'checkout'}
+        onClose={() => {
+          setIsCheckoutOpen(false);
+          if (currentView === 'checkout') handleNavigate('catalogue');
+        }}
         onOrderPlaced={() => handleNavigate('account')}
+        onNavigateToAccount={() => handleNavigate('account')}
+        onBrowseCatalogue={() => handleNavigate('catalogue')}
       />
 
       {/* 7. Footer Policy Modals */}
@@ -609,15 +615,17 @@ const AppContent = () => {
 export default function App() {
   return (
     <ToastProvider>
-      <CartProvider>
-        <WishlistProvider>
-          <ComparisonProvider>
-            <RecentlyViewedProvider>
-              <AppContent />
-            </RecentlyViewedProvider>
-          </ComparisonProvider>
-        </WishlistProvider>
-      </CartProvider>
+      <AuthProvider>
+        <CartProvider>
+          <WishlistProvider>
+            <ComparisonProvider>
+              <RecentlyViewedProvider>
+                <AppContent />
+              </RecentlyViewedProvider>
+            </ComparisonProvider>
+          </WishlistProvider>
+        </CartProvider>
+      </AuthProvider>
     </ToastProvider>
   );
 }
