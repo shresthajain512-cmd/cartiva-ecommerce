@@ -1,13 +1,15 @@
 import React from 'react';
-import { X, SlidersHorizontal, Check, RotateCcw, Star, DollarSign, Store, Tag } from 'lucide-react';
+import { X, SlidersHorizontal, Check, RotateCcw, Star, DollarSign, Store, Tag, Sparkles } from 'lucide-react';
 
 export const FilterSidebar = ({
   categories = [],
   selectedCategory,
   onSelectCategory,
+  categoryCounts = {},
   sellers = [],
   selectedSeller,
   onSelectSeller,
+  sellerCounts = {},
   minPrice,
   maxPrice,
   onPriceChange,
@@ -15,8 +17,10 @@ export const FilterSidebar = ({
   onRatingChange,
   inStockOnly,
   onToggleInStock,
+  inStockCount,
   discountedOnly,
   onToggleDiscounted,
+  discountedCount,
   newArrivalsOnly,
   onToggleNewArrivals,
   onResetFilters,
@@ -32,12 +36,24 @@ export const FilterSidebar = ({
     { label: 'Above ₹6,000', min: 6000, max: 20000 }
   ];
 
+  const handlePriceInput = (type, val) => {
+    const cleaned = val === '' ? '' : Math.max(0, Number(val));
+    if (type === 'min') {
+      onPriceChange(cleaned, maxPrice);
+    } else {
+      onPriceChange(minPrice, cleaned);
+    }
+  };
+
   return (
     <>
       {/* Mobile Backdrop */}
       {isOpen && <div className="filter-drawer-backdrop" onClick={onClose} />}
 
-      <aside className={`catalogue-filter-sidebar ${isOpen ? 'drawer-open' : ''}`}>
+      <aside
+        className={`catalogue-filter-sidebar ${isOpen ? 'drawer-open' : ''}`}
+        aria-label="Catalogue filters"
+      >
         {/* Drawer Header (Mobile & Desktop) */}
         <div className="filter-sidebar-header">
           <div className="filter-header-title-group">
@@ -55,6 +71,7 @@ export const FilterSidebar = ({
                 className="btn-reset-filters"
                 onClick={onResetFilters}
                 title="Reset all filters"
+                aria-label="Reset all filters"
               >
                 <RotateCcw size={13} />
                 <span>Reset All</span>
@@ -74,18 +91,32 @@ export const FilterSidebar = ({
         <div className="filter-scroll-content">
           {/* 1. Category Filter */}
           <div className="filter-section">
-            <h4 className="filter-section-title">
-              <Tag size={14} />
-              <span>Category</span>
-            </h4>
-            <div className="filter-options-list">
+            <div className="filter-section-header-row">
+              <h4 className="filter-section-title">
+                <Tag size={14} />
+                <span>Category</span>
+              </h4>
+              {selectedCategory !== 'All' && (
+                <button
+                  type="button"
+                  className="btn-section-clear"
+                  onClick={() => onSelectCategory('All')}
+                  aria-label="Reset category filter"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <div className="filter-options-list" role="radiogroup" aria-label="Filter by category">
               <button
                 type="button"
                 className={`filter-category-pill ${selectedCategory === 'All' ? 'active' : ''}`}
                 onClick={() => onSelectCategory('All')}
+                aria-checked={selectedCategory === 'All'}
+                role="radio"
               >
-                <span>All Categories</span>
-                {selectedCategory === 'All' && <Check size={14} />}
+                <span className="pill-name">All Categories</span>
+                <span className="pill-count-badge">{categoryCounts.All ?? totalMatching ?? 50}</span>
               </button>
               {categories.map((cat) => (
                 <button
@@ -93,9 +124,11 @@ export const FilterSidebar = ({
                   type="button"
                   className={`filter-category-pill ${selectedCategory === cat ? 'active' : ''}`}
                   onClick={() => onSelectCategory(cat)}
+                  aria-checked={selectedCategory === cat}
+                  role="radio"
                 >
-                  <span>{cat}</span>
-                  {selectedCategory === cat && <Check size={14} />}
+                  <span className="pill-name">{cat}</span>
+                  <span className="pill-count-badge">{categoryCounts[cat] ?? 0}</span>
                 </button>
               ))}
             </div>
@@ -103,10 +136,22 @@ export const FilterSidebar = ({
 
           {/* 2. Price Range Filter */}
           <div className="filter-section">
-            <h4 className="filter-section-title">
-              <DollarSign size={14} />
-              <span>Price Range (₹)</span>
-            </h4>
+            <div className="filter-section-header-row">
+              <h4 className="filter-section-title">
+                <DollarSign size={14} />
+                <span>Price Range (₹)</span>
+              </h4>
+              {(minPrice !== '' || maxPrice !== '') && (
+                <button
+                  type="button"
+                  className="btn-section-clear"
+                  onClick={() => onPriceChange('', '')}
+                  aria-label="Clear price filter"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
 
             {/* Presets */}
             <div className="price-presets-grid">
@@ -125,6 +170,7 @@ export const FilterSidebar = ({
                         onPriceChange(preset.min, preset.max);
                       }
                     }}
+                    aria-pressed={isSelected}
                   >
                     {preset.label}
                   </button>
@@ -140,9 +186,10 @@ export const FilterSidebar = ({
                   type="number"
                   placeholder="Min"
                   value={minPrice}
-                  onChange={(e) => onPriceChange(e.target.value, maxPrice)}
+                  onChange={(e) => handlePriceInput('min', e.target.value)}
                   min="0"
                   className="price-input"
+                  aria-label="Minimum price in rupees"
                 />
               </div>
               <span className="price-divider">–</span>
@@ -152,9 +199,10 @@ export const FilterSidebar = ({
                   type="number"
                   placeholder="Max"
                   value={maxPrice}
-                  onChange={(e) => onPriceChange(minPrice, e.target.value)}
+                  onChange={(e) => handlePriceInput('max', e.target.value)}
                   min="0"
                   className="price-input"
+                  aria-label="Maximum price in rupees"
                 />
               </div>
             </div>
@@ -163,10 +211,22 @@ export const FilterSidebar = ({
           {/* 3. Artisan Studio / Seller Filter */}
           {sellers.length > 0 && (
             <div className="filter-section">
-              <h4 className="filter-section-title">
-                <Store size={14} />
-                <span>Artisan Studio</span>
-              </h4>
+              <div className="filter-section-header-row">
+                <h4 className="filter-section-title">
+                  <Store size={14} />
+                  <span>Artisan Studio</span>
+                </h4>
+                {selectedSeller && (
+                  <button
+                    type="button"
+                    className="btn-section-clear"
+                    onClick={() => onSelectSeller('')}
+                    aria-label="Clear studio filter"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
               <div className="filter-options-list">
                 <button
                   type="button"
@@ -183,7 +243,12 @@ export const FilterSidebar = ({
                     className={`filter-seller-chip ${selectedSeller === s._id ? 'active' : ''}`}
                     onClick={() => onSelectSeller(selectedSeller === s._id ? '' : s._id)}
                   >
-                    <span>{s.businessName || s.name}</span>
+                    <span className="seller-name-label">
+                      {s.businessName || s.name}
+                      {sellerCounts[s._id] !== undefined && (
+                        <span className="seller-inline-count"> ({sellerCounts[s._id]})</span>
+                      )}
+                    </span>
                     {selectedSeller === s._id && <Check size={13} />}
                   </button>
                 ))}
@@ -193,10 +258,22 @@ export const FilterSidebar = ({
 
           {/* 4. Minimum Customer Rating */}
           <div className="filter-section">
-            <h4 className="filter-section-title">
-              <Star size={14} />
-              <span>Customer Rating</span>
-            </h4>
+            <div className="filter-section-header-row">
+              <h4 className="filter-section-title">
+                <Star size={14} />
+                <span>Customer Rating</span>
+              </h4>
+              {minRating && (
+                <button
+                  type="button"
+                  className="btn-section-clear"
+                  onClick={() => onRatingChange('')}
+                  aria-label="Clear rating filter"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
             <div className="rating-filter-options">
               {[4.8, 4.5, 4.0].map((starVal) => {
                 const isSelected = Number(minRating) === starVal;
@@ -206,6 +283,7 @@ export const FilterSidebar = ({
                     type="button"
                     className={`rating-filter-btn ${isSelected ? 'active' : ''}`}
                     onClick={() => onRatingChange(isSelected ? '' : starVal)}
+                    aria-pressed={isSelected}
                   >
                     <div className="rating-stars-group">
                       <Star size={14} fill="var(--color-gold)" color="var(--color-gold)" />
@@ -221,6 +299,7 @@ export const FilterSidebar = ({
           {/* 5. Inventory & Special Flags */}
           <div className="filter-section">
             <h4 className="filter-section-title">
+              <Sparkles size={14} />
               <span>Availability & Offers</span>
             </h4>
             <div className="filter-checkbox-list">
@@ -231,7 +310,12 @@ export const FilterSidebar = ({
                   onChange={(e) => onToggleInStock(e.target.checked)}
                 />
                 <span className="checkbox-custom" />
-                <span className="checkbox-label">In-Stock Only</span>
+                <span className="checkbox-label">
+                  In-Stock Only
+                  {inStockCount !== undefined && (
+                    <span className="checkbox-inline-count"> ({inStockCount})</span>
+                  )}
+                </span>
               </label>
 
               <label className="filter-checkbox-row">
@@ -241,7 +325,12 @@ export const FilterSidebar = ({
                   onChange={(e) => onToggleDiscounted(e.target.checked)}
                 />
                 <span className="checkbox-custom" />
-                <span className="checkbox-label">Special Offers & Discounts</span>
+                <span className="checkbox-label">
+                  Special Offers & Discounts
+                  {discountedCount !== undefined && (
+                    <span className="checkbox-inline-count"> ({discountedCount})</span>
+                  )}
+                </span>
               </label>
 
               <label className="filter-checkbox-row">

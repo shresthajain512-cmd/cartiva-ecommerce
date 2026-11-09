@@ -57,7 +57,8 @@ const getProducts = async (req, res) => {
           { title: { $regex: escaped, $options: 'i' } },
           { description: { $regex: escaped, $options: 'i' } },
           { category: { $regex: escaped, $options: 'i' } },
-          { storeName: { $regex: escaped, $options: 'i' } }
+          { storeName: { $regex: escaped, $options: 'i' } },
+          { tags: { $regex: escaped, $options: 'i' } }
         ];
       }
     }

@@ -16,15 +16,23 @@ import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useComparison } from '../context/ComparisonContext';
 import { useToast } from '../context/ToastContext';
+import { useRecentlyViewed } from '../context/RecentlyViewedContext';
 
 export const ProductModal = ({ product, onClose, onViewFullDetails }) => {
   const { addToCart } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
   const { isInCompare, toggleCompare } = useComparison();
   const { addToast } = useToast();
+  const { addRecentlyViewed } = useRecentlyViewed();
 
   const [quantity, setQuantity] = useState(1);
   const [isAdded, setIsAdded] = useState(false);
+
+  useEffect(() => {
+    if (product) {
+      addRecentlyViewed(product);
+    }
+  }, [product, addRecentlyViewed]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {

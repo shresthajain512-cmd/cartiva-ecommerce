@@ -19,6 +19,7 @@ import { FilterSidebar } from './components/FilterSidebar';
 import { ProductGrid } from './components/ProductGrid';
 import { ProductModal } from './components/ProductModal';
 import { ProductDetailPage } from './components/ProductDetailPage';
+import { RecentlyViewedCatalogueSection } from './components/RecentlyViewedCatalogueSection';
 
 // Dedicated Pages & Storefronts
 import { WishlistPage } from './components/WishlistPage';
@@ -198,6 +199,36 @@ const AppContent = () => {
     return Array.from(map.values());
   }, [allProducts]);
 
+  // Derive counts for categories, sellers, in-stock, and discounts
+  const categoryCounts = useMemo(() => {
+    const counts = { All: allProducts.length };
+    allProducts.forEach((p) => {
+      if (p.category) {
+        counts[p.category] = (counts[p.category] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [allProducts]);
+
+  const sellerCounts = useMemo(() => {
+    const counts = {};
+    allProducts.forEach((p) => {
+      const sId = p.seller?._id || p.seller;
+      if (sId) {
+        counts[sId] = (counts[sId] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [allProducts]);
+
+  const inStockCount = useMemo(() => {
+    return allProducts.filter((p) => p.stockCount > 0).length;
+  }, [allProducts]);
+
+  const discountedCount = useMemo(() => {
+    return allProducts.filter((p) => p.originalPrice && p.originalPrice > p.price).length;
+  }, [allProducts]);
+
   // Compute active filters count
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -352,9 +383,11 @@ const AppContent = () => {
                 categories={categories}
                 selectedCategory={selectedCategory}
                 onSelectCategory={setSelectedCategory}
+                categoryCounts={categoryCounts}
                 sellers={uniqueSellers}
                 selectedSeller={selectedSeller}
                 onSelectSeller={setSelectedSeller}
+                sellerCounts={sellerCounts}
                 minPrice={minPrice}
                 maxPrice={maxPrice}
                 onPriceChange={handlePriceChange}
@@ -362,8 +395,10 @@ const AppContent = () => {
                 onRatingChange={setMinRating}
                 inStockOnly={inStockOnly}
                 onToggleInStock={setInStockOnly}
+                inStockCount={inStockCount}
                 discountedOnly={discountedOnly}
                 onToggleDiscounted={setDiscountedOnly}
+                discountedCount={discountedCount}
                 newArrivalsOnly={newArrivalsOnly}
                 onToggleNewArrivals={setNewArrivalsOnly}
                 onResetFilters={handleResetFilters}
@@ -377,10 +412,12 @@ const AppContent = () => {
               <div className="catalogue-main-grid-column">
                 <ProductGrid
                   products={products}
+                  allProducts={allProducts}
                   loading={loading}
                   error={error}
                   onRetry={loadCatalogue}
                   searchQuery={searchQuery}
+                  onSearchChange={setSearchQuery}
                   onClearSearch={() => setSearchQuery('')}
                   selectedCategory={selectedCategory}
                   onSelectCategory={setSelectedCategory}
@@ -406,6 +443,12 @@ const AppContent = () => {
                 />
               </div>
             </div>
+
+            {/* Recently Viewed Products Discovery Section */}
+            <RecentlyViewedCatalogueSection
+              onInspectProduct={handleInspectProduct}
+              onSelectProduct={handleViewFullDetails}
+            />
           </div>
         )}
 

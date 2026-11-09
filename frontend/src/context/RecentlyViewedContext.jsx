@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 const RecentlyViewedContext = createContext();
 const RECENT_STORAGE_KEY = 'cartiva_recent_viewed_v1';
@@ -23,7 +23,7 @@ export const RecentlyViewedProvider = ({ children }) => {
     }
   }, [recentlyViewed]);
 
-  const addRecentlyViewed = (product) => {
+  const addRecentlyViewed = useCallback((product) => {
     if (!product || !product._id) return;
 
     setRecentlyViewed((prev) => {
@@ -31,11 +31,11 @@ export const RecentlyViewedProvider = ({ children }) => {
       const filtered = prev.filter((item) => item._id !== product._id);
       return [product, ...filtered].slice(0, MAX_RECENT_ITEMS);
     });
-  };
+  }, []);
 
-  const clearRecentlyViewed = () => {
+  const clearRecentlyViewed = useCallback(() => {
     setRecentlyViewed([]);
-  };
+  }, []);
 
   return (
     <RecentlyViewedContext.Provider

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ShoppingBag,
   Search,
@@ -37,6 +37,10 @@ export const Navbar = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState(searchQuery || '');
   const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    setLocalSearch(searchQuery || '');
+  }, [searchQuery]);
 
   const handleSearchSubmit = (e) => {
     if (e) e.preventDefault();
