@@ -55,6 +55,15 @@ const userSchema = new mongoose.Schema(
       default: function () {
         return this.role === 'seller' ? 'pending' : undefined;
       }
+    },
+    // Platform-wide account standing (can be suspended by marketplace admin)
+    accountStatus: {
+      type: String,
+      enum: {
+        values: ['active', 'suspended'],
+        message: '{VALUE} is not a valid account status'
+      },
+      default: 'active'
     }
   },
   {

@@ -44,6 +44,14 @@ const protect = async (req, res, next) => {
         });
       }
 
+      // Check if user account has been suspended by marketplace administration
+      if (req.user.accountStatus === 'suspended') {
+        return res.status(403).json({
+          success: false,
+          message: 'Your account has been suspended. Please contact marketplace administration.'
+        });
+      }
+
       next();
     } catch (error) {
       if (error.name === 'TokenExpiredError') {

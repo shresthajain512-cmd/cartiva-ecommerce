@@ -7059,6 +7059,1046 @@ img {
   }
 }
 
+/* ==========================================================================
+   DAY 13: ADMIN DASHBOARD & FULL SYSTEM INTEGRATION STYLES
+   ========================================================================== */
+
+.admin-portal-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* 1. Admin Header */
+.admin-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--color-beige);
+}
+
+.admin-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.admin-super-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  background-color: var(--color-charcoal);
+  color: var(--color-gold);
+  border-radius: var(--radius-sm);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-title {
+  font-family: var(--font-heading);
+  font-size: 1.65rem;
+  color: var(--color-charcoal);
+  margin: 0;
+  line-height: 1.25;
+}
+
+.admin-subtitle {
+  font-size: 0.9rem;
+  color: var(--color-charcoal-muted);
+  max-width: 680px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.btn-admin-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.65rem 1rem;
+  background: var(--color-white);
+  border: 1px solid var(--color-beige);
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-charcoal);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.btn-admin-refresh:hover:not(:disabled) {
+  border-color: var(--color-gold);
+  color: var(--color-gold);
+  background-color: var(--color-cream);
+}
+
+/* 2. Admin Sub-tab Navigation */
+.admin-subtabs-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--color-beige);
+  padding-bottom: 0.75rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.admin-subtabs-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.admin-subtab-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 1.1rem;
+  background-color: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-charcoal-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.admin-subtab-pill:hover {
+  color: var(--color-charcoal);
+  background-color: var(--color-cream);
+}
+
+.admin-subtab-pill.active {
+  color: var(--color-white);
+  background-color: var(--color-charcoal);
+  border-color: var(--color-charcoal);
+}
+
+.admin-pill-alert-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.15rem 0.45rem;
+  background-color: #d97706;
+  color: #fff;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.admin-pill-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.15rem 0.45rem;
+  background-color: var(--color-beige);
+  color: var(--color-charcoal);
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.admin-subtab-pill.active .admin-pill-count-badge {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: var(--color-white);
+}
+
+/* 3. Alert Banner */
+.admin-alert-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.1rem 1.4rem;
+  background-color: #fffbeb;
+  border: 1px solid #fde68a;
+  border-left: 4px solid #d97706;
+  border-radius: var(--radius-sm);
+  margin-bottom: 1.5rem;
+}
+
+.alert-banner-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+}
+
+.alert-icon {
+  color: #d97706;
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+.alert-heading {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #92400e;
+  margin: 0 0 0.2rem 0;
+}
+
+.alert-body {
+  font-size: 0.84rem;
+  color: #b45309;
+  margin: 0;
+  line-height: 1.45;
+}
+
+.btn-alert-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.55rem 0.95rem;
+  background-color: #d97706;
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--transition-fast);
+}
+
+.btn-alert-action:hover {
+  background-color: #b45309;
+}
+
+/* 4. Admin KPI Metrics Grid */
+.admin-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.admin-stat-card {
+  background-color: var(--color-white);
+  border: 1px solid var(--color-beige);
+  border-radius: var(--radius-sm);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.75rem;
+  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.admin-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+  border-color: var(--color-gold);
+}
+
+.admin-stat-card.highlight {
+  background: linear-gradient(135deg, #1c1c1a 0%, #292925 100%);
+  border-color: var(--color-gold);
+  color: var(--color-white);
+}
+
+.admin-stat-card.highlight .stat-label {
+  color: var(--color-gold);
+}
+
+.admin-stat-card.highlight .stat-icon {
+  color: var(--color-gold);
+}
+
+.admin-stat-card.highlight .stat-main-val {
+  color: var(--color-white);
+}
+
+.admin-stat-card.highlight .stat-footnote {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.74rem;
+}
+
+.stat-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.stat-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-charcoal-muted);
+}
+
+.stat-icon {
+  color: var(--color-charcoal-muted);
+}
+
+.stat-main-val {
+  font-family: var(--font-heading);
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-charcoal);
+  line-height: 1.1;
+}
+
+.stat-breakdown-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.mini-tag {
+  display: inline-block;
+  padding: 0.15rem 0.4rem;
+  background-color: var(--color-cream);
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-charcoal);
+}
+
+.mini-tag.success {
+  background-color: #ecfdf5;
+  color: #047857;
+}
+
+.mini-tag.warning {
+  background-color: #fffbeb;
+  color: #b45309;
+}
+
+.mini-tag.danger {
+  background-color: #fef2f2;
+  color: #b91c1c;
+}
+
+.mini-tag.alert {
+  background-color: #fdf4ff;
+  color: #86198f;
+}
+
+.mini-tag.muted {
+  background-color: #f3f4f6;
+  color: #6b7280;
+}
+
+/* 5. 2-Column Split: Recent Orders & Sellers */
+.admin-overview-split-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 1.5rem;
+}
+
+.overview-split-card {
+  background-color: var(--color-white);
+  border: 1px solid var(--color-beige);
+  border-radius: var(--radius-sm);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.split-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--color-beige);
+}
+
+.split-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.split-title-group h3 {
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  color: var(--color-charcoal);
+  margin: 0;
+}
+
+.btn-view-all-link {
+  background: none;
+  border: none;
+  color: var(--color-gold);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.btn-view-all-link:hover {
+  color: var(--color-charcoal);
+}
+
+.split-table-wrap {
+  overflow-x: auto;
+}
+
+.admin-compact-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.admin-compact-table th {
+  text-align: left;
+  padding: 0.5rem 0.6rem;
+  color: var(--color-charcoal-muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--color-beige);
+}
+
+.admin-compact-table td {
+  padding: 0.65rem 0.6rem;
+  border-bottom: 1px solid #f3f3f0;
+  vertical-align: middle;
+}
+
+.admin-compact-table tr:last-child td {
+  border-bottom: none;
+}
+
+.order-ref-code {
+  font-family: monospace;
+  font-size: 0.82rem;
+  color: var(--color-charcoal);
+}
+
+.applicant-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.btn-table-action {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid var(--color-beige);
+  background-color: var(--color-white);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.btn-table-action.approve {
+  background-color: #047857;
+  color: #fff;
+  border-color: #047857;
+}
+
+.btn-table-action.approve:hover {
+  background-color: #065f46;
+}
+
+.empty-split-text {
+  color: var(--color-charcoal-muted);
+  font-size: 0.85rem;
+  font-style: italic;
+  padding: 1rem 0;
+  text-align: center;
+}
+
+/* 6. Main Controls Bar */
+.table-controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-beige);
+}
+
+.filter-group-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--color-charcoal-muted);
+  margin-right: 0.25rem;
+}
+
+.filter-pills-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.filter-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  background-color: var(--color-white);
+  border: 1px solid var(--color-beige);
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-charcoal-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.filter-pill-btn:hover {
+  border-color: var(--color-charcoal);
+  color: var(--color-charcoal);
+}
+
+.filter-pill-btn.active {
+  background-color: var(--color-charcoal);
+  border-color: var(--color-charcoal);
+  color: var(--color-white);
+}
+
+.pill-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.1rem 0.35rem;
+  background-color: #d97706;
+  color: #fff;
+  border-radius: 9999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.table-search-box {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  background-color: var(--color-white);
+  border: 1px solid var(--color-beige);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.75rem;
+  min-width: 280px;
+}
+
+.table-search-box input {
+  border: none;
+  outline: none;
+  font-size: 0.82rem;
+  color: var(--color-charcoal);
+  width: 100%;
+  background: transparent;
+}
+
+.clear-search-btn {
+  background: none;
+  border: none;
+  color: var(--color-charcoal-muted);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+.admin-select-wrap select {
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--color-beige);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-white);
+  font-size: 0.8rem;
+  color: var(--color-charcoal);
+  cursor: pointer;
+}
+
+/* 7. Main Admin Data Table */
+.admin-table-container {
+  background-color: var(--color-white);
+  border: 1px solid var(--color-beige);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+}
+
+.admin-main-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  text-align: left;
+}
+
+.admin-main-table th {
+  padding: 0.85rem 1rem;
+  background-color: var(--color-cream);
+  color: var(--color-charcoal-muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--color-beige);
+  white-space: nowrap;
+}
+
+.admin-main-table td {
+  padding: 0.95rem 1rem;
+  border-bottom: 1px solid var(--color-beige);
+  vertical-align: middle;
+}
+
+.admin-main-table tr:last-child td {
+  border-bottom: none;
+}
+
+.admin-main-table tr:hover td {
+  background-color: #fafaf8;
+}
+
+.empty-table-cell {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--color-charcoal-muted);
+  font-style: italic;
+}
+
+/* Cells formatting */
+.studio-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.studio-name {
+  font-weight: 700;
+  color: var(--color-charcoal);
+}
+
+.studio-id {
+  font-size: 0.72rem;
+}
+
+.applicant-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.applicant-name {
+  font-weight: 600;
+  color: var(--color-charcoal);
+}
+
+.applicant-email {
+  font-size: 0.78rem;
+}
+
+.user-identity-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.self-badge {
+  display: inline-block;
+  padding: 0.1rem 0.35rem;
+  background-color: #dbeafe;
+  color: #1e40af;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  width: fit-content;
+  text-transform: uppercase;
+}
+
+.role-badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.role-badge.role-admin {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.role-badge.role-seller {
+  background-color: #e0e7ff;
+  color: #3730a3;
+}
+
+.role-badge.role-customer {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.role-tag-mini.admin {
+  background-color: #92400e;
+  color: #fff;
+}
+
+.business-cell-text {
+  font-weight: 600;
+  color: var(--color-charcoal);
+}
+
+/* Status Pills */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.status-pill.status-pending,
+.status-pill.status-placed {
+  background-color: #fffbeb;
+  color: #b45309;
+}
+
+.status-pill.status-approved,
+.status-pill.status-active,
+.status-pill.status-delivered {
+  background-color: #ecfdf5;
+  color: #047857;
+}
+
+.status-pill.status-rejected,
+.status-pill.status-cancelled {
+  background-color: #fef2f2;
+  color: #b91c1c;
+}
+
+.status-pill.status-suspended {
+  background-color: #fdf4ff;
+  color: #86198f;
+}
+
+.status-pill.status-processing,
+.status-pill.status-shipped {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+}
+
+.status-pill.status-archived {
+  background-color: #f3f4f6;
+  color: #6b7280;
+}
+
+/* Product thumbnail in table */
+.product-thumb-title-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.product-admin-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 4px;
+  object-fit: cover;
+  border: 1px solid var(--color-beige);
+}
+
+.product-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.prod-title {
+  color: var(--color-charcoal);
+  font-weight: 600;
+  max-width: 240px;
+}
+
+.featured-badge-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  color: var(--color-gold);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.price-stock-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.prod-price {
+  font-weight: 700;
+  color: var(--color-charcoal);
+}
+
+/* Order Cells */
+.order-ref-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.patron-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.patron-name {
+  font-weight: 600;
+  color: var(--color-charcoal);
+}
+
+.seller-groups-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.seller-group-pill {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  background-color: var(--color-cream);
+  border-radius: 3px;
+  font-size: 0.72rem;
+  color: var(--color-charcoal);
+  width: fit-content;
+}
+
+.order-amount {
+  font-weight: 700;
+  color: var(--color-charcoal);
+}
+
+.admin-status-dropdown {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--color-beige);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-white);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-charcoal);
+  cursor: pointer;
+}
+
+/* 8. Action Buttons */
+.action-buttons-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.btn-action-emerald {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.65rem;
+  background-color: #047857;
+  color: #fff;
+  border: 1px solid #047857;
+  border-radius: var(--radius-sm);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.btn-action-emerald:hover:not(:disabled) {
+  background-color: #065f46;
+  border-color: #065f46;
+}
+
+.btn-action-rose {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.65rem;
+  background-color: #dc2626;
+  color: #fff;
+  border: 1px solid #dc2626;
+  border-radius: var(--radius-sm);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.btn-action-rose:hover:not(:disabled) {
+  background-color: #b91c1c;
+  border-color: #b91c1c;
+}
+
+.btn-action-amber {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.65rem;
+  background-color: #d97706;
+  color: #fff;
+  border: 1px solid #d97706;
+  border-radius: var(--radius-sm);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.btn-action-amber:hover:not(:disabled) {
+  background-color: #b45309;
+  border-color: #b45309;
+}
+
+.btn-action-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.65rem;
+  background-color: var(--color-white);
+  color: var(--color-charcoal);
+  border: 1px solid var(--color-beige);
+  border-radius: var(--radius-sm);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.btn-action-ghost:hover:not(:disabled) {
+  border-color: var(--color-charcoal);
+}
+
+.btn-action-ghost.active {
+  background-color: #fef3c7;
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+.btn-action-disabled {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.65rem;
+  background-color: #f3f4f6;
+  color: #9ca3af;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--radius-sm);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: not-allowed;
+}
+
+/* 9. Admin Modal Specifics */
+.admin-modal-wide {
+  max-width: 720px;
+}
+
+.admin-modal-seller-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.admin-seller-group-card {
+  border: 1px solid var(--color-beige);
+  border-radius: var(--radius-sm);
+  padding: 0.85rem;
+  background-color: #fafaf8;
+}
+
+.group-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-beige);
+  margin-bottom: 0.5rem;
+}
+
+.sub-ref {
+  display: block;
+  font-size: 0.72rem;
+  font-family: monospace;
+}
+
+.group-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.group-subtotal-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--color-beige);
+  margin-top: 0.4rem;
+  font-size: 0.82rem;
+}
+
+/* 10. Responsive Breakpoints for Admin Portal */
+@media (max-width: 1024px) {
+  .admin-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .admin-overview-split-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .admin-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+  .table-controls-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .table-search-box {
+    width: 100%;
+    min-width: 100%;
+  }
+  .admin-alert-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .btn-alert-action {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-subtabs-nav {
+    gap: 0.35rem;
+  }
+  .admin-subtab-pill {
+    padding: 0.45rem 0.75rem;
+    font-size: 0.78rem;
+  }
+  .action-buttons-cell {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .action-buttons-cell button,
+  .action-buttons-cell .status-select-wrap select {
+    width: 100%;
+  }
+}
+
+
 
 
 

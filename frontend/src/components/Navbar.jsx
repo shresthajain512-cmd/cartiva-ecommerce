@@ -12,11 +12,13 @@ import {
   Compass,
   Bot,
   User,
-  Tag
+  Tag,
+  ShieldCheck
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useComparison } from '../context/ComparisonContext';
+import { useAuth } from '../context/AuthContext';
 import { SmartSearchDropdown } from './SmartSearchDropdown';
 
 export const Navbar = ({
@@ -33,6 +35,7 @@ export const Navbar = ({
   const { totalItems, toggleCart } = useCart();
   const { totalWishlist } = useWishlist();
   const { totalCompared, openCompareModal } = useComparison();
+  const { role } = useAuth();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState(searchQuery || '');
@@ -264,6 +267,17 @@ export const Navbar = ({
                 <Tag size={14} />
                 <span>Offers</span>
               </button>
+
+              {role === 'admin' && (
+                <button
+                  type="button"
+                  className={`nav-menu-link ${currentView === 'admin' ? 'active' : ''}`}
+                  onClick={() => onNavigate('admin')}
+                >
+                  <ShieldCheck size={14} />
+                  <span>Admin Console</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -378,6 +392,20 @@ export const Navbar = ({
                   <User size={15} />
                   <span>My Account & Orders</span>
                 </button>
+
+                {role === 'admin' && (
+                  <button
+                    type="button"
+                    className={`mobile-link ${currentView === 'admin' ? 'active' : ''}`}
+                    onClick={() => {
+                      onNavigate('admin');
+                      setMobileMenuOpen(false);
+                    }}
+                  >
+                    <ShieldCheck size={15} />
+                    <span>Admin Console</span>
+                  </button>
+                )}
               </div>
 
               <div className="mobile-special-actions">

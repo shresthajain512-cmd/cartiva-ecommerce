@@ -30,6 +30,7 @@ import {
   updateOrderStatusApi
 } from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { AdminPortal } from './AdminPortal';
 
 export const AccountOrdersPage = ({
   onBack,
@@ -59,7 +60,11 @@ export const AccountOrdersPage = ({
   // Sync initialTab when props change
   useEffect(() => {
     if (initialTab) {
-      setActiveTab(initialTab);
+      if (initialTab === 'admin' || initialTab === 'admin-portal') {
+        setActiveTab('admin-portal');
+      } else {
+        setActiveTab(initialTab);
+      }
     }
   }, [initialTab]);
 
@@ -174,6 +179,8 @@ export const AccountOrdersPage = ({
       if (targetRole === 'seller') {
         setActiveTab('seller-portal');
         setSellerSubTab('overview');
+      } else if (targetRole === 'admin') {
+        setActiveTab('admin-portal');
       } else {
         setActiveTab('orders');
       }
@@ -312,6 +319,18 @@ export const AccountOrdersPage = ({
                 <span>Seller Dashboard</span>
                 <span className="role-tag-mini">Seller</span>
               </button>
+
+              {(role === 'admin' || import.meta.env.DEV) && (
+                <button
+                  type="button"
+                  className={`account-tab-btn ${activeTab === 'admin-portal' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('admin-portal')}
+                >
+                  <ShieldCheck size={17} />
+                  <span>Admin Console</span>
+                  <span className="role-tag-mini admin">Admin</span>
+                </button>
+              )}
 
               <button
                 type="button"
@@ -1214,6 +1233,18 @@ export const AccountOrdersPage = ({
                   </div>
                 )}
               </div>
+            )}
+
+            {/* TAB: ADMIN CONSOLE */}
+            {activeTab === 'admin-portal' && (
+              <AdminPortal
+                token={token}
+                user={user}
+                role={role}
+                onExploreCatalogue={onExploreCatalogue}
+                onNavigateToStorefront={onNavigateToStorefront}
+                addToast={addToast}
+              />
             )}
 
             {/* TAB 3: SAVED ADDRESSES */}

@@ -249,3 +249,157 @@ export const registerApi = async (userData) => {
   }
   return data;
 };
+
+/**
+ * Fetch platform-wide aggregated metrics (Admin only)
+ */
+export const fetchAdminMetricsApi = async (token) => {
+  const headers = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const response = await fetch(`${API_BASE_URL}/api/admin/metrics`, { headers });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || `Failed to fetch admin metrics (HTTP ${response.status})`);
+  }
+  return data;
+};
+
+/**
+ * Fetch seller applications and roster with status/search filters (Admin only)
+ */
+export const fetchAdminSellersApi = async (params = {}, token) => {
+  const headers = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const query = new URLSearchParams();
+  if (params.status && params.status !== 'all') query.append('status', params.status);
+  if (params.q) query.append('q', params.q);
+
+  const qs = query.toString();
+  const response = await fetch(`${API_BASE_URL}/api/admin/sellers${qs ? `?${qs}` : ''}`, { headers });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || `Failed to fetch sellers (HTTP ${response.status})`);
+  }
+  return data;
+};
+
+/**
+ * Update seller application approval status (Admin only)
+ */
+export const updateSellerApprovalApi = async (sellerId, status, token) => {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const response = await fetch(`${API_BASE_URL}/api/admin/sellers/${sellerId}/approval`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({ status })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || `Failed to update seller status (HTTP ${response.status})`);
+  }
+  return data;
+};
+
+/**
+ * Fetch user directory with role/status filters and search (Admin only)
+ */
+export const fetchAdminUsersApi = async (params = {}, token) => {
+  const headers = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const query = new URLSearchParams();
+  if (params.role && params.role !== 'all') query.append('role', params.role);
+  if (params.status && params.status !== 'all') query.append('status', params.status);
+  if (params.q) query.append('q', params.q);
+  if (params.page) query.append('page', params.page);
+  if (params.limit) query.append('limit', params.limit);
+
+  const qs = query.toString();
+  const response = await fetch(`${API_BASE_URL}/api/admin/users${qs ? `?${qs}` : ''}`, { headers });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || `Failed to fetch users (HTTP ${response.status})`);
+  }
+  return data;
+};
+
+/**
+ * Update user account standing (active/suspended) (Admin only)
+ */
+export const updateUserStatusApi = async (userId, accountStatus, token) => {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const response = await fetch(`${API_BASE_URL}/api/admin/users/${userId}/status`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({ accountStatus })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || `Failed to update user status (HTTP ${response.status})`);
+  }
+  return data;
+};
+
+/**
+ * Fetch marketplace products for admin moderation (Admin only)
+ */
+export const fetchAdminProductsApi = async (params = {}, token) => {
+  const headers = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const query = new URLSearchParams();
+  if (params.category && params.category !== 'All') query.append('category', params.category);
+  if (params.keyword) query.append('keyword', params.keyword);
+  if (params.status && params.status !== 'all') query.append('status', params.status);
+  if (params.seller) query.append('seller', params.seller);
+  if (params.page) query.append('page', params.page);
+  if (params.limit) query.append('limit', params.limit);
+
+  const qs = query.toString();
+  const response = await fetch(`${API_BASE_URL}/api/admin/products${qs ? `?${qs}` : ''}`, { headers });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || `Failed to fetch admin products (HTTP ${response.status})`);
+  }
+  return data;
+};
+
+/**
+ * Moderate a product (archive, publish, feature) (Admin only)
+ */
+export const moderateProductApi = async (productId, updateData, token) => {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const response = await fetch(`${API_BASE_URL}/api/admin/products/${productId}/moderate`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(updateData)
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || `Failed to moderate product (HTTP ${response.status})`);
+  }
+  return data;
+};
+
+/**
+ * Fetch all platform orders (Admin only)
+ */
+export const fetchAllOrdersApi = async (token) => {
+  const headers = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const response = await fetch(`${API_BASE_URL}/api/orders`, { headers });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || `Failed to fetch platform orders (HTTP ${response.status})`);
+  }
+  return data;
+};

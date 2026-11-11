@@ -55,6 +55,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/products', require('./routes/productRoutes'));
 app.use('/api/orders', require('./routes/orderRoutes'));
+app.use('/api/admin', require('./routes/adminRoutes'));
 
 // 8. Error Handling Middlewares
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');

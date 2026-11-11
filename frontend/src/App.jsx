@@ -46,7 +46,7 @@ const AppContent = () => {
   const getHashInfo = () => {
     const raw = window.location.hash.replace(/^#\/?/, '');
     const [viewPart, queryPart] = raw.split('?');
-    const validViews = ['home', 'catalogue', 'product-detail', 'wishlist', 'collections', 'artisans', 'storefront', 'offers', 'account', 'checkout', 'seller-dashboard', 'seller'];
+    const validViews = ['home', 'catalogue', 'product-detail', 'wishlist', 'collections', 'artisans', 'storefront', 'offers', 'account', 'checkout', 'seller-dashboard', 'seller', 'admin', 'admin-dashboard'];
     const view = validViews.includes(viewPart) ? viewPart : 'home';
     const params = new URLSearchParams(queryPart || '');
     const id = params.get('id');
@@ -536,10 +536,16 @@ const AppContent = () => {
           />
         )}
 
-        {/* VIEW: MY ACCOUNT, ORDERS & SELLER DASHBOARD */}
-        {(currentView === 'account' || currentView === 'seller-dashboard' || currentView === 'seller') && (
+        {/* VIEW: MY ACCOUNT, ORDERS, SELLER & ADMIN DASHBOARDS */}
+        {(currentView === 'account' || currentView === 'seller-dashboard' || currentView === 'seller' || currentView === 'admin' || currentView === 'admin-dashboard') && (
           <AccountOrdersPage
-            initialTab={currentView.startsWith('seller') ? 'seller-portal' : 'orders'}
+            initialTab={
+              currentView.startsWith('admin')
+                ? 'admin-portal'
+                : currentView.startsWith('seller')
+                ? 'seller-portal'
+                : 'orders'
+            }
             onBack={() => handleNavigate('home')}
             onExploreCatalogue={() => handleNavigate('catalogue')}
             onNavigateToStorefront={handleNavigateToStorefront}
