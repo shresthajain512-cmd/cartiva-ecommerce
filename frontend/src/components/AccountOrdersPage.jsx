@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   User,
   Package,
@@ -14,22 +14,54 @@ import {
   RefreshCw,
   ExternalLink,
   Sparkles,
-  AlertCircle
+  AlertCircle,
+  X,
+  Search,
+  Check,
+  Ban,
+  Eye,
+  SlidersHorizontal,
+  DollarSign
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { fetchMyOrdersApi, fetchSellerOrdersApi } from '../services/api';
+import {
+  fetchMyOrdersApi,
+  fetchSellerOrdersApi,
+  updateOrderStatusApi
+} from '../services/api';
 import { useToast } from '../context/ToastContext';
 
-export const AccountOrdersPage = ({ onBack, onExploreCatalogue }) => {
-  const { user, token, role, loginAsDemo, logout, ensureAuthenticatedSession } = useAuth();
+export const AccountOrdersPage = ({
+  onBack,
+  onExploreCatalogue,
+  initialTab = 'orders',
+  onNavigateToStorefront
+}) => {
+  const { user, token, role, loginAsDemo } = useAuth();
   const { addToast } = useToast();
 
-  const [activeTab, setActiveTab] = useState('orders'); // 'orders' | 'seller-portal' | 'addresses' | 'profile'
+  const [activeTab, setActiveTab] = useState(initialTab); // 'orders' | 'seller-portal' | 'addresses' | 'profile'
+  const [sellerSubTab, setSellerSubTab] = useState('overview'); // 'overview' | 'orders' | 'profile'
+
   const [customerOrders, setCustomerOrders] = useState([]);
   const [sellerOrders, setSellerOrders] = useState([]);
+  const [sellerStats, setSellerStats] = useState(null);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [expandedOrderId, setExpandedOrderId] = useState(null);
+  const [selectedOrderForModal, setSelectedOrderForModal] = useState(null);
+  const [updatingOrderId, setUpdatingOrderId] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Seller Orders Filters
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [sellerSearch, setSellerSearch] = useState('');
+
+  // Sync initialTab when props change
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   // 1. Fetch Customer Orders
   const loadCustomerOrders = useCallback(async () => {
@@ -53,7 +85,7 @@ export const AccountOrdersPage = ({ onBack, onExploreCatalogue }) => {
     } finally {
       setLoadingOrders(false);
     }
-  }, [token, ensureAuthenticatedSession]);
+  }, [token, loginAsDemo]);
 
   // 2. Fetch Seller Orders (Isolated to seller's products only)
   const loadSellerOrders = useCallback(async () => {
@@ -77,6 +109,9 @@ export const AccountOrdersPage = ({ onBack, onExploreCatalogue }) => {
         const res = await fetchSellerOrdersApi(activeToken);
         if (res.success && Array.isArray(res.orders)) {
           setSellerOrders(res.orders);
+          if (res.stats) {
+            setSellerStats(res.stats);
+          }
         }
       }
     } catch (err) {
@@ -98,12 +133,47 @@ export const AccountOrdersPage = ({ onBack, onExploreCatalogue }) => {
     setExpandedOrderId((prev) => (prev === id ? null : id));
   };
 
+  // 3. Status Transition Action for Sellers
+  const handleUpdateOrderStatus = async (orderId, newStatus) => {
+    setUpdatingOrderId(orderId);
+    try {
+      let activeToken = token;
+      if (!activeToken && import.meta.env.DEV) {
+        const demoRes = await loginAsDemo('seller');
+        activeToken = demoRes?.token;
+      }
+
+      const res = await updateOrderStatusApi(orderId, { orderStatus: newStatus }, activeToken);
+
+      if (res.success) {
+        addToast(`Order status updated to "${newStatus}"`, 'success');
+        // Optimistically update local order state
+        setSellerOrders((prev) =>
+          prev.map((o) => (o._id === orderId ? { ...o, orderStatus: newStatus } : o))
+        );
+        if (selectedOrderForModal && selectedOrderForModal._id === orderId) {
+          setSelectedOrderForModal((prev) => ({ ...prev, orderStatus: newStatus }));
+        }
+        // Refresh full verified data from backend
+        loadSellerOrders();
+      } else {
+        throw new Error(res.message || 'Status transition failed');
+      }
+    } catch (err) {
+      console.error('Failed to update status:', err);
+      addToast(err.message || 'Unable to update status', 'error');
+    } finally {
+      setUpdatingOrderId(null);
+    }
+  };
+
   const handleSwitchRole = async (targetRole) => {
     try {
       await loginAsDemo(targetRole);
       addToast(`Switched account to verified ${targetRole.toUpperCase()}`, 'success');
       if (targetRole === 'seller') {
         setActiveTab('seller-portal');
+        setSellerSubTab('overview');
       } else {
         setActiveTab('orders');
       }
@@ -125,6 +195,64 @@ export const AccountOrdersPage = ({ onBack, onExploreCatalogue }) => {
       return 'Recent';
     }
   };
+
+  // Compute verified metrics strictly from real database orders
+  const stats = useMemo(() => {
+    if (sellerStats) return sellerStats;
+
+    const totalOrders = sellerOrders.length;
+    const pendingOrders = sellerOrders.filter((o) => o.orderStatus === 'Placed').length;
+    const processingOrders = sellerOrders.filter((o) => o.orderStatus === 'Processing').length;
+    const shippedOrders = sellerOrders.filter((o) => o.orderStatus === 'Shipped').length;
+    const deliveredOrders = sellerOrders.filter((o) => o.orderStatus === 'Delivered').length;
+    const shippedOrDeliveredOrders = sellerOrders.filter((o) =>
+      ['Shipped', 'Delivered'].includes(o.orderStatus)
+    ).length;
+    const totalSales = sellerOrders
+      .filter((o) => o.orderStatus !== 'Cancelled')
+      .reduce((sum, o) => sum + (o.total || 0), 0);
+
+    return {
+      totalOrders,
+      pendingOrders,
+      processingOrders,
+      shippedOrders,
+      deliveredOrders,
+      shippedOrDeliveredOrders,
+      totalSales
+    };
+  }, [sellerOrders, sellerStats]);
+
+  // Filtered orders for the Orders tab
+  const filteredSellerOrders = useMemo(() => {
+    return sellerOrders.filter((order) => {
+      // 1. Status Filter
+      if (statusFilter !== 'All') {
+        if (statusFilter === 'ShippedOrDelivered') {
+          if (!['Shipped', 'Delivered'].includes(order.orderStatus)) return false;
+        } else if (order.orderStatus !== statusFilter) {
+          return false;
+        }
+      }
+
+      // 2. Search Query Filter
+      if (sellerSearch.trim()) {
+        const q = sellerSearch.toLowerCase().trim();
+        const refMatch = (order.orderReference || '').toLowerCase().includes(q);
+        const subRefMatch = (order.subOrderReference || '').toLowerCase().includes(q);
+        const recipientMatch = (order.shippingAddress?.fullName || '').toLowerCase().includes(q);
+        const cityMatch = (order.shippingAddress?.city || '').toLowerCase().includes(q);
+        const itemMatch = (order.items || []).some((it) => (it.title || '').toLowerCase().includes(q));
+        if (!refMatch && !subRefMatch && !recipientMatch && !cityMatch && !itemMatch) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [sellerOrders, statusFilter, sellerSearch]);
+
+  const storeName = user?.businessName || 'Kanso Sound & Acoustics';
 
   return (
     <div className="account-orders-page">
@@ -151,7 +279,7 @@ export const AccountOrdersPage = ({ onBack, onExploreCatalogue }) => {
                 </h3>
                 <span className="account-membership">
                   {role === 'seller'
-                    ? `Artisan Studio • ${user?.businessName || 'Verified'}`
+                    ? `Artisan Studio • ${storeName}`
                     : role === 'admin'
                     ? 'Cartiva Curator Admin'
                     : 'Cartiva Collector Member'}
@@ -175,10 +303,13 @@ export const AccountOrdersPage = ({ onBack, onExploreCatalogue }) => {
               <button
                 type="button"
                 className={`account-tab-btn ${activeTab === 'seller-portal' ? 'active' : ''}`}
-                onClick={() => setActiveTab('seller-portal')}
+                onClick={() => {
+                  setActiveTab('seller-portal');
+                  setSellerSubTab('overview');
+                }}
               >
                 <Store size={17} />
-                <span>Artisan Studio Orders</span>
+                <span>Seller Dashboard</span>
                 <span className="role-tag-mini">Seller</span>
               </button>
 
@@ -287,10 +418,6 @@ export const AccountOrdersPage = ({ onBack, onExploreCatalogue }) => {
                     {customerOrders.map((order) => {
                       const isExpanded = expandedOrderId === order._id;
                       const orderRef = order.orderReference || `CTV-${order._id?.slice(-6)}`;
-                      const totalPieces = order.orderItems?.reduce(
-                        (acc, it) => acc + it.quantity,
-                        0
-                      ) || 0;
 
                       return (
                         <div key={order._id} className="order-history-card">
@@ -368,14 +495,13 @@ export const AccountOrdersPage = ({ onBack, onExploreCatalogue }) => {
                                 {order.sellerGroups?.map((g, idx) => (
                                   <div key={idx} className="alloc-group-box">
                                     <div className="alloc-header">
-                                      <strong>{g.storeName}</strong>
-                                      <span>Ref: {g.subOrderReference}</span>
-                                      <span className="status-tag">{g.status}</span>
+                                      <span className="alloc-name">{g.storeName}</span>
+                                      <span className="alloc-code">{g.subOrderReference}</span>
                                     </div>
-                                    <div className="alloc-math">
+                                    <div className="alloc-body">
                                       <span>Items Subtotal: ₹{Number(g.subtotal).toLocaleString('en-IN')}</span>
-                                      <span>• Courier: {g.shippingFee === 0 ? 'Complimentary' : `₹${g.shippingFee}`}</span>
-                                      <span>• Total: ₹{Number(g.total).toLocaleString('en-IN')}</span>
+                                      <span>Courier Allocation: {g.shippingFee === 0 ? 'COMPLIMENTARY' : `₹${g.shippingFee}`}</span>
+                                      <strong>Studio Total: ₹{Number(g.total).toLocaleString('en-IN')}</strong>
                                     </div>
                                   </div>
                                 ))}
@@ -409,92 +535,682 @@ export const AccountOrdersPage = ({ onBack, onExploreCatalogue }) => {
               </div>
             )}
 
-            {/* TAB 2: SELLER ORDER ISOLATION PORTAL */}
+            {/* TAB 2: SELLER DASHBOARD & ORDER MANAGEMENT */}
             {activeTab === 'seller-portal' && (
-              <div className="account-seller-orders-view">
-                <div className="panel-header">
-                  <div className="header-text-group">
-                    <h2 className="panel-title">Artisan Studio Order Allocation</h2>
-                    <p className="panel-subtitle">
-                      Multi-Vendor Isolation: Displays exclusively orders containing your studio's handcrafted pieces.
-                      Other sellers' products and financials are completely redacted.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className="btn-refresh-orders"
-                    onClick={loadSellerOrders}
-                  >
-                    <RefreshCw size={15} className={loadingOrders ? 'spin' : ''} />
-                    <span>Refresh Studio Orders</span>
-                  </button>
-                </div>
-
+              <div className="seller-dashboard-container">
+                {/* Multi-Vendor Security Isolation Banner */}
                 <div className="seller-isolation-banner">
                   <ShieldCheck size={18} />
                   <span>
-                    <strong>Multi-Vendor Isolation Active:</strong> Viewing strictly as studio partner{' '}
-                    <strong>{user?.businessName || 'Kanso Sound & Acoustics'}</strong>.
+                    <strong>Multi-Vendor Isolation Active:</strong> Authenticated strictly as artisan studio partner{' '}
+                    <strong>{storeName}</strong>. Other sellers' products, allocations, and customer data are completely redacted.
                   </span>
                 </div>
 
-                {loadingOrders && sellerOrders.length === 0 ? (
-                  <div className="orders-loading-state">
-                    <div className="cartiva-spinner" />
-                    <span>Loading studio dispatch allocations...</span>
-                  </div>
-                ) : sellerOrders.length === 0 ? (
-                  <div className="orders-empty-state">
-                    <Store size={48} className="empty-pkg-icon" />
-                    <h3>No Incoming Studio Orders</h3>
-                    <p>
-                      As patrons check out multi-vendor bags, your studio pieces will automatically
-                      appear here with dedicated sub-order dispatch codes.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="seller-orders-list">
-                    {sellerOrders.map((sOrder) => (
-                      <div key={sOrder._id} className="seller-order-card">
-                        <div className="seller-order-header">
-                          <div className="subref-group">
-                            <span className="subref-tag">Studio Sub-Order</span>
-                            <span className="subref-val">{sOrder.subOrderReference}</span>
-                            <span className="parent-ref">Parent: {sOrder.orderReference}</span>
-                          </div>
-                          <span className="status-pill-seller">{sOrder.orderStatus}</span>
-                        </div>
+                {/* Seller Sub-Navigation Bar */}
+                <div className="seller-dashboard-subnav">
+                  <button
+                    type="button"
+                    className={`subnav-pill ${sellerSubTab === 'overview' ? 'active' : ''}`}
+                    onClick={() => setSellerSubTab('overview')}
+                  >
+                    <Sparkles size={15} />
+                    <span>Dashboard Overview</span>
+                  </button>
 
-                        {/* Studio Items Only */}
-                        <div className="seller-items-table">
-                          {sOrder.items?.map((it, idx) => (
-                            <div key={idx} className="seller-item-row">
-                              <img src={it.imageUrl} alt={it.title} className="item-thumb" />
-                              <div className="item-name-qty">
-                                <span className="item-title">{it.title}</span>
-                                <span className="item-qty">Quantity to Dispatch: <strong>{it.quantity}</strong></span>
+                  <button
+                    type="button"
+                    className={`subnav-pill ${sellerSubTab === 'orders' ? 'active' : ''}`}
+                    onClick={() => setSellerSubTab('orders')}
+                  >
+                    <Package size={15} />
+                    <span>Order Management</span>
+                    {stats.totalOrders > 0 && (
+                      <span className="subnav-badge">{stats.totalOrders}</span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`subnav-pill ${sellerSubTab === 'profile' ? 'active' : ''}`}
+                    onClick={() => setSellerSubTab('profile')}
+                  >
+                    <Store size={15} />
+                    <span>Studio Profile</span>
+                  </button>
+                </div>
+
+                {/* SUB-VIEW 1: SELLER DASHBOARD OVERVIEW */}
+                {sellerSubTab === 'overview' && (
+                  <div className="seller-overview-view">
+                    {/* Welcome Header Section */}
+                    <div className="seller-welcome-card">
+                      <div className="welcome-text-side">
+                        <div className="welcome-badge-row">
+                          <span className="artisan-partner-pill">Verified Artisan Partner</span>
+                          <span className="status-live-pill">Live Studio Ledger</span>
+                        </div>
+                        <h2 className="welcome-store-title">Welcome back, {storeName}</h2>
+                        <p className="welcome-tagline">
+                          Review verified sales, monitor incoming studio dispatches, and manage insured patron deliveries.
+                        </p>
+                      </div>
+
+                      <div className="welcome-actions-side">
+                        <button
+                          type="button"
+                          className="btn-primary"
+                          onClick={() => setSellerSubTab('orders')}
+                        >
+                          <Package size={16} />
+                          <span>Manage Incoming Orders</span>
+                        </button>
+
+                        {onNavigateToStorefront && (
+                          <button
+                            type="button"
+                            className="btn-secondary"
+                            onClick={() => onNavigateToStorefront(user?._id)}
+                          >
+                            <ExternalLink size={15} />
+                            <span>View Public Storefront</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Key Metrics Cards (Strictly Real Data) */}
+                    <div className="seller-metrics-grid">
+                      {/* Metric 1: Total Sales */}
+                      <div className="seller-metric-card highlight">
+                        <div className="metric-header">
+                          <span className="metric-label">Gross Studio Sales</span>
+                          <div className="metric-icon-wrap gold">
+                            <DollarSign size={18} />
+                          </div>
+                        </div>
+                        <div className="metric-value">
+                          ₹{Number(stats.totalSales || 0).toLocaleString('en-IN')}
+                        </div>
+                        <span className="metric-subtitle">Verified non-cancelled allocations</span>
+                      </div>
+
+                      {/* Metric 2: Total Orders */}
+                      <div className="seller-metric-card">
+                        <div className="metric-header">
+                          <span className="metric-label">Total Orders Received</span>
+                          <div className="metric-icon-wrap">
+                            <Package size={18} />
+                          </div>
+                        </div>
+                        <div className="metric-value">{stats.totalOrders}</div>
+                        <span className="metric-subtitle">Across all marketplace carts</span>
+                      </div>
+
+                      {/* Metric 3: Pending Orders */}
+                      <div className="seller-metric-card">
+                        <div className="metric-header">
+                          <span className="metric-label">Pending Verification</span>
+                          <div className="metric-icon-wrap amber">
+                            <Clock size={18} />
+                          </div>
+                        </div>
+                        <div className="metric-value">{stats.pendingOrders}</div>
+                        <span className="metric-subtitle">New orders awaiting packaging</span>
+                      </div>
+
+                      {/* Metric 4: In Processing */}
+                      <div className="seller-metric-card">
+                        <div className="metric-header">
+                          <span className="metric-label">Studio In Processing</span>
+                          <div className="metric-icon-wrap blue">
+                            <RefreshCw size={18} />
+                          </div>
+                        </div>
+                        <div className="metric-value">{stats.processingOrders}</div>
+                        <span className="metric-subtitle">Currently in artisan preparation</span>
+                      </div>
+
+                      {/* Metric 5: Shipped & Delivered */}
+                      <div className="seller-metric-card">
+                        <div className="metric-header">
+                          <span className="metric-label">Shipped & Delivered</span>
+                          <div className="metric-icon-wrap green">
+                            <Truck size={18} />
+                          </div>
+                        </div>
+                        <div className="metric-value">{stats.shippedOrDeliveredOrders}</div>
+                        <span className="metric-subtitle">Dispatched with insured courier</span>
+                      </div>
+                    </div>
+
+                    {/* Recent Orders Section */}
+                    <div className="seller-recent-orders-section">
+                      <div className="section-header-row">
+                        <div className="sec-heading-group">
+                          <h3 className="sec-title">Recent Studio Dispatches</h3>
+                          <p className="sec-sub">The most recent acquisitions containing your handcrafted pieces.</p>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn-text-link"
+                          onClick={() => setSellerSubTab('orders')}
+                        >
+                          <span>View All ({stats.totalOrders})</span>
+                          <ChevronRight size={15} />
+                        </button>
+                      </div>
+
+                      {loadingOrders && sellerOrders.length === 0 ? (
+                        <div className="orders-loading-state">
+                          <div className="cartiva-spinner" />
+                          <span>Loading verified studio orders...</span>
+                        </div>
+                      ) : sellerOrders.length === 0 ? (
+                        <div className="orders-empty-state mini">
+                          <Store size={36} className="empty-pkg-icon" />
+                          <h4>No Orders Yet</h4>
+                          <p>When patrons purchase items from your studio, they will appear here instantly.</p>
+                        </div>
+                      ) : (
+                        <div className="recent-orders-table">
+                          <div className="recent-table-head">
+                            <span>Sub-Order Reference</span>
+                            <span>Date</span>
+                            <span>Destination</span>
+                            <span>Pieces</span>
+                            <span>Allocation</span>
+                            <span>Status</span>
+                            <span>Action</span>
+                          </div>
+
+                          <div className="recent-table-body">
+                            {sellerOrders.slice(0, 4).map((order) => (
+                              <div key={order._id} className="recent-order-row">
+                                <span className="cell-subref">{order.subOrderReference}</span>
+                                <span className="cell-date">{formatDate(order.createdAt)}</span>
+                                <span className="cell-dest">
+                                  {order.shippingAddress?.city}, {order.shippingAddress?.state}
+                                </span>
+                                <span className="cell-qty">{order.itemsCount || 1} pcs</span>
+                                <span className="cell-total">₹{Number(order.total || 0).toLocaleString('en-IN')}</span>
+                                <span className={`cell-status-pill status-${(order.orderStatus || 'placed').toLowerCase()}`}>
+                                  {order.orderStatus}
+                                </span>
+                                <div className="cell-action">
+                                  <button
+                                    type="button"
+                                    className="btn-quick-manage"
+                                    onClick={() => {
+                                      setSelectedOrderForModal(order);
+                                    }}
+                                  >
+                                    <Eye size={13} />
+                                    <span>Details</span>
+                                  </button>
+                                </div>
                               </div>
-                              <span className="item-price">₹{Number(it.itemTotal).toLocaleString('en-IN')}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Studio Craftsmanship & Dispatch SLA Card */}
+                    <div className="studio-sla-notice-box">
+                      <ShieldCheck size={20} className="sla-icon" />
+                      <div className="sla-text">
+                        <h4>Cartiva Studio Dispatch Standards</h4>
+                        <p>
+                          Every piece must be packaged using insured, branded atelier materials with a maker provenance certificate.
+                          Standard dispatch timeframe is 48 hours from order placement.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SUB-VIEW 2: ORDERS MANAGEMENT LEDGER */}
+                {sellerSubTab === 'orders' && (
+                  <div className="seller-orders-management-view">
+                    {/* Controls Bar: Search & Status Filters */}
+                    <div className="orders-filter-toolbar">
+                      <div className="filter-search-input-wrap">
+                        <Search size={16} className="search-icon" />
+                        <input
+                          type="text"
+                          placeholder="Search by order reference, patron name, or product..."
+                          value={sellerSearch}
+                          onChange={(e) => setSellerSearch(e.target.value)}
+                          className="search-input"
+                        />
+                        {sellerSearch && (
+                          <button
+                            type="button"
+                            className="search-clear-btn"
+                            onClick={() => setSellerSearch('')}
+                          >
+                            <X size={14} />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="filter-pills-row">
+                        <button
+                          type="button"
+                          className={`filter-pill ${statusFilter === 'All' ? 'active' : ''}`}
+                          onClick={() => setStatusFilter('All')}
+                        >
+                          All ({stats.totalOrders})
+                        </button>
+                        <button
+                          type="button"
+                          className={`filter-pill ${statusFilter === 'Placed' ? 'active' : ''}`}
+                          onClick={() => setStatusFilter('Placed')}
+                        >
+                          Placed ({stats.pendingOrders})
+                        </button>
+                        <button
+                          type="button"
+                          className={`filter-pill ${statusFilter === 'Processing' ? 'active' : ''}`}
+                          onClick={() => setStatusFilter('Processing')}
+                        >
+                          Processing ({stats.processingOrders})
+                        </button>
+                        <button
+                          type="button"
+                          className={`filter-pill ${statusFilter === 'Shipped' ? 'active' : ''}`}
+                          onClick={() => setStatusFilter('Shipped')}
+                        >
+                          Shipped ({stats.shippedOrders})
+                        </button>
+                        <button
+                          type="button"
+                          className={`filter-pill ${statusFilter === 'Delivered' ? 'active' : ''}`}
+                          onClick={() => setStatusFilter('Delivered')}
+                        >
+                          Delivered ({stats.deliveredOrders})
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        className="btn-refresh-orders"
+                        onClick={loadSellerOrders}
+                        title="Reload from backend"
+                      >
+                        <RefreshCw size={15} className={loadingOrders ? 'spin' : ''} />
+                        <span>Refresh</span>
+                      </button>
+                    </div>
+
+                    {/* Orders List */}
+                    {loadingOrders && sellerOrders.length === 0 ? (
+                      <div className="orders-loading-state">
+                        <div className="cartiva-spinner" />
+                        <span>Loading studio dispatch allocations...</span>
+                      </div>
+                    ) : filteredSellerOrders.length === 0 ? (
+                      <div className="orders-empty-state">
+                        <Package size={44} className="empty-pkg-icon" />
+                        <h3>No Orders Found</h3>
+                        <p>
+                          {sellerSearch || statusFilter !== 'All'
+                            ? 'No orders matched your active filter or search criteria.'
+                            : 'No incoming orders have been placed for your studio yet.'}
+                        </p>
+                        {(sellerSearch || statusFilter !== 'All') && (
+                          <button
+                            type="button"
+                            className="btn-secondary"
+                            onClick={() => {
+                              setSellerSearch('');
+                              setStatusFilter('All');
+                            }}
+                          >
+                            Clear Filters
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="seller-orders-list">
+                        {filteredSellerOrders.map((sOrder) => {
+                          const currentStatus = sOrder.orderStatus || 'Placed';
+                          const isUpdating = updatingOrderId === sOrder._id;
+
+                          return (
+                            <div key={sOrder._id} className="seller-order-card">
+                              {/* Card Header */}
+                              <div className="seller-order-header">
+                                <div className="subref-group">
+                                  <span className="subref-tag">Studio Sub-Order</span>
+                                  <span className="subref-val">{sOrder.subOrderReference}</span>
+                                  <span className="parent-ref">Parent: {sOrder.orderReference}</span>
+                                  <span className="order-date-text">• Placed {formatDate(sOrder.createdAt)}</span>
+                                </div>
+
+                                <div className="header-status-group">
+                                  <span className={`status-pill-seller status-${currentStatus.toLowerCase()}`}>
+                                    {currentStatus}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Studio Items Table (Isolated to this seller only) */}
+                              <div className="seller-items-table">
+                                {sOrder.items?.map((it, idx) => (
+                                  <div key={idx} className="seller-item-row">
+                                    <img src={it.imageUrl} alt={it.title} className="item-thumb" />
+                                    <div className="item-name-qty">
+                                      <span className="item-title">{it.title}</span>
+                                      <span className="item-qty">
+                                        Quantity to Dispatch: <strong>{it.quantity}</strong> • Unit Price: ₹{Number(it.price).toLocaleString('en-IN')}
+                                      </span>
+                                    </div>
+                                    <span className="item-price">
+                                      ₹{Number(it.itemTotal).toLocaleString('en-IN')}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+
+                              {/* Customer Shipping & Financials Bar */}
+                              <div className="seller-dispatch-info">
+                                <div className="dispatch-dest">
+                                  <Truck size={15} />
+                                  <span>
+                                    <strong>Ship to:</strong> {sOrder.shippingAddress?.fullName}, {sOrder.shippingAddress?.street},{' '}
+                                    {sOrder.shippingAddress?.city}, {sOrder.shippingAddress?.state} ({sOrder.shippingAddress?.postalCode}) • Phone: {sOrder.shippingAddress?.phone}
+                                  </span>
+                                </div>
+                                <div className="seller-payout-total">
+                                  <span>Studio Allocation:</span>
+                                  <strong>₹{Number(sOrder.total || 0).toLocaleString('en-IN')}</strong>
+                                </div>
+                              </div>
+
+                              {/* Permitted Status Transitions Toolbar */}
+                              <div className="seller-actions-toolbar">
+                                <div className="action-hint">
+                                  <span>Status Management:</span>
+                                </div>
+
+                                <div className="status-button-group">
+                                  {/* From 'Placed' -> 'Processing' or 'Cancelled' */}
+                                  {currentStatus === 'Placed' && (
+                                    <>
+                                      <button
+                                        type="button"
+                                        className="btn-status-action btn-processing"
+                                        disabled={isUpdating}
+                                        onClick={() => handleUpdateOrderStatus(sOrder._id, 'Processing')}
+                                      >
+                                        <Package size={14} />
+                                        <span>{isUpdating ? 'Updating...' : 'Begin Processing'}</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="btn-status-action btn-cancel"
+                                        disabled={isUpdating}
+                                        onClick={() => {
+                                          if (window.confirm('Cancel this studio sub-order allocation?')) {
+                                            handleUpdateOrderStatus(sOrder._id, 'Cancelled');
+                                          }
+                                        }}
+                                      >
+                                        <Ban size={14} />
+                                        <span>Cancel</span>
+                                      </button>
+                                    </>
+                                  )}
+
+                                  {/* From 'Processing' -> 'Shipped' or 'Cancelled' */}
+                                  {currentStatus === 'Processing' && (
+                                    <>
+                                      <button
+                                        type="button"
+                                        className="btn-status-action btn-shipped"
+                                        disabled={isUpdating}
+                                        onClick={() => handleUpdateOrderStatus(sOrder._id, 'Shipped')}
+                                      >
+                                        <Truck size={14} />
+                                        <span>{isUpdating ? 'Updating...' : 'Dispatch & Mark as Shipped'}</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="btn-status-action btn-cancel"
+                                        disabled={isUpdating}
+                                        onClick={() => {
+                                          if (window.confirm('Cancel this studio sub-order allocation?')) {
+                                            handleUpdateOrderStatus(sOrder._id, 'Cancelled');
+                                          }
+                                        }}
+                                      >
+                                        <Ban size={14} />
+                                        <span>Cancel</span>
+                                      </button>
+                                    </>
+                                  )}
+
+                                  {/* From 'Shipped' -> 'Delivered' */}
+                                  {currentStatus === 'Shipped' && (
+                                    <button
+                                      type="button"
+                                      className="btn-status-action btn-delivered"
+                                      disabled={isUpdating}
+                                      onClick={() => handleUpdateOrderStatus(sOrder._id, 'Delivered')}
+                                    >
+                                      <CheckCircle2 size={14} />
+                                      <span>{isUpdating ? 'Updating...' : 'Confirm Delivery to Patron'}</span>
+                                    </button>
+                                  )}
+
+                                  {/* Terminal state: Delivered */}
+                                  {currentStatus === 'Delivered' && (
+                                    <span className="terminal-badge delivered">
+                                      <Check size={14} />
+                                      <span>Delivered & Finalized</span>
+                                    </span>
+                                  )}
+
+                                  {/* Terminal state: Cancelled */}
+                                  {currentStatus === 'Cancelled' && (
+                                    <span className="terminal-badge cancelled">
+                                      <Ban size={14} />
+                                      <span>Sub-Order Cancelled</span>
+                                    </span>
+                                  )}
+
+                                  {/* Open Modal Button */}
+                                  <button
+                                    type="button"
+                                    className="btn-open-modal-detail"
+                                    onClick={() => setSelectedOrderForModal(sOrder)}
+                                    title="View full dispatch breakdown"
+                                  >
+                                    <Eye size={14} />
+                                    <span>Inspect Details</span>
+                                  </button>
+                                </div>
+                              </div>
                             </div>
-                          ))}
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* SUB-VIEW 3: STUDIO PROFILE */}
+                {sellerSubTab === 'profile' && (
+                  <div className="seller-profile-view">
+                    <div className="panel-header">
+                      <div className="header-text-group">
+                        <h2 className="panel-title">Artisan Studio Identity</h2>
+                        <p className="panel-subtitle">Manage your studio maker profile, verify credentials, and preview your public storefront.</p>
+                      </div>
+                    </div>
+
+                    <div className="studio-profile-card">
+                      <div className="studio-profile-header">
+                        <div className="studio-avatar">
+                          <Store size={28} />
+                        </div>
+                        <div className="studio-headline">
+                          <h3>{storeName}</h3>
+                          <span className="studio-status-pill approved">
+                            <ShieldCheck size={13} />
+                            <span>Verified Artisan Partner</span>
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="studio-info-grid">
+                        <div className="info-box">
+                          <span className="info-lbl">Artisan Master / Contact:</span>
+                          <span className="info-val">{user?.name || 'Kaito Tanaka'}</span>
+                        </div>
+                        <div className="info-box">
+                          <span className="info-lbl">Studio Contact Email:</span>
+                          <span className="info-val">{user?.email || 'kaito@kansosound.com'}</span>
+                        </div>
+                        <div className="info-box">
+                          <span className="info-lbl">Approval Status:</span>
+                          <span className="info-val text-success">Approved & Active on Marketplace</span>
+                        </div>
+                        <div className="info-box">
+                          <span className="info-lbl">Active Studio Orders:</span>
+                          <span className="info-val">{stats.totalOrders} recorded acquisitions</span>
+                        </div>
+                        <div className="info-box">
+                          <span className="info-lbl">Verified Sales Volume:</span>
+                          <span className="info-val text-gold">₹{Number(stats.totalSales || 0).toLocaleString('en-IN')}</span>
+                        </div>
+                      </div>
+
+                      <div className="studio-actions-row">
+                        {onNavigateToStorefront && (
+                          <button
+                            type="button"
+                            className="btn-primary"
+                            onClick={() => onNavigateToStorefront(user?._id)}
+                          >
+                            <ExternalLink size={16} />
+                            <span>Open Public Atelier Storefront</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          onClick={() => setSellerSubTab('orders')}
+                        >
+                          <Package size={16} />
+                          <span>View Studio Order Ledger</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* MODAL: SINGLE ORDER DETAIL DRAWER */}
+                {selectedOrderForModal && (
+                  <div className="modal-backdrop" onClick={() => setSelectedOrderForModal(null)}>
+                    <div
+                      className="seller-modal-content"
+                      onClick={(e) => e.stopPropagation()}
+                      role="dialog"
+                      aria-modal="true"
+                      aria-labelledby="modal-order-title"
+                    >
+                      <div className="modal-header">
+                        <div className="modal-title-group">
+                          <Store size={18} />
+                          <h3 id="modal-order-title">
+                            Studio Sub-Order: {selectedOrderForModal.subOrderReference}
+                          </h3>
+                        </div>
+                        <button
+                          type="button"
+                          className="modal-close-btn"
+                          onClick={() => setSelectedOrderForModal(null)}
+                          aria-label="Close details"
+                        >
+                          <X size={20} />
+                        </button>
+                      </div>
+
+                      <div className="modal-body">
+                        {/* Parent Reference and Placement Time */}
+                        <div className="modal-meta-bar">
+                          <span>Parent Reference: <strong>{selectedOrderForModal.orderReference}</strong></span>
+                          <span>Placed: <strong>{formatDate(selectedOrderForModal.createdAt)}</strong></span>
+                          <span className={`status-pill-seller status-${(selectedOrderForModal.orderStatus || 'placed').toLowerCase()}`}>
+                            {selectedOrderForModal.orderStatus}
+                          </span>
                         </div>
 
-                        {/* Customer Shipping Destination for Dispatch */}
-                        <div className="seller-dispatch-info">
-                          <div className="dispatch-dest">
-                            <Truck size={15} />
-                            <span>
-                              <strong>Ship to:</strong> {sOrder.shippingAddress?.fullName}, {sOrder.shippingAddress?.city},{' '}
-                              {sOrder.shippingAddress?.state} ({sOrder.shippingAddress?.postalCode})
-                            </span>
+                        {/* Customer Delivery Information */}
+                        <div className="modal-section">
+                          <h4 className="modal-sec-title">Patron Shipping Destination</h4>
+                          <div className="modal-address-box">
+                            <p><strong>Recipient Name:</strong> {selectedOrderForModal.shippingAddress?.fullName}</p>
+                            <p><strong>Contact Phone:</strong> {selectedOrderForModal.shippingAddress?.phone}</p>
+                            <p>
+                              <strong>Delivery Address:</strong> {selectedOrderForModal.shippingAddress?.street},{' '}
+                              {selectedOrderForModal.shippingAddress?.city}, {selectedOrderForModal.shippingAddress?.state} –{' '}
+                              {selectedOrderForModal.shippingAddress?.postalCode}
+                            </p>
                           </div>
-                          <div className="seller-payout-total">
-                            <span>Studio Allocation:</span>
-                            <strong>₹{Number(sOrder.total || 0).toLocaleString('en-IN')}</strong>
+                        </div>
+
+                        {/* Studio Items Table */}
+                        <div className="modal-section">
+                          <h4 className="modal-sec-title">Studio Allocation Pieces ({selectedOrderForModal.items?.length || 0})</h4>
+                          <div className="modal-items-list">
+                            {selectedOrderForModal.items?.map((it, idx) => (
+                              <div key={idx} className="modal-item-row">
+                                <img src={it.imageUrl} alt={it.title} className="modal-thumb" />
+                                <div className="modal-item-details">
+                                  <span className="modal-item-title">{it.title}</span>
+                                  <span className="modal-item-qty">
+                                    Quantity: <strong>{it.quantity}</strong> • Unit Price: ₹{Number(it.price).toLocaleString('en-IN')}
+                                  </span>
+                                </div>
+                                <span className="modal-item-total">
+                                  ₹{Number(it.itemTotal).toLocaleString('en-IN')}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Payout Breakdown */}
+                        <div className="modal-totals-box">
+                          <div className="total-row">
+                            <span>Studio Pieces Subtotal:</span>
+                            <span>₹{Number(selectedOrderForModal.subtotal || 0).toLocaleString('en-IN')}</span>
+                          </div>
+                          <div className="total-row">
+                            <span>Allocated Courier & Packaging:</span>
+                            <span>{selectedOrderForModal.shippingFee === 0 ? 'Complimentary' : `₹${selectedOrderForModal.shippingFee}`}</span>
+                          </div>
+                          <div className="total-row grand">
+                            <span>Total Studio Allocation:</span>
+                            <strong>₹{Number(selectedOrderForModal.total || 0).toLocaleString('en-IN')}</strong>
                           </div>
                         </div>
                       </div>
-                    ))}
+
+                      <div className="modal-footer">
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          onClick={() => setSelectedOrderForModal(null)}
+                        >
+                          Close Details
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

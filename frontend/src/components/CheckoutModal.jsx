@@ -26,7 +26,14 @@ export const CheckoutModal = ({ isOpen, onClose, onOrderPlaced, onNavigateToAcco
   const { user, token, ensureAuthenticatedSession } = useAuth();
 
   const [step, setStep] = useState('checkout'); // 'checkout' | 'processing' | 'success'
-  const [confirmedOrder, setConfirmedOrder] = useState(null);
+  const [confirmedOrder, setConfirmedOrder] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('cartiva_latest_confirmed_order');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -55,10 +62,21 @@ export const CheckoutModal = ({ isOpen, onClose, onOrderPlaced, onNavigateToAcco
     }
   }, [user]);
 
-  // Reset step when modal opens
+  // Reset or restore step when modal opens (supports reopening confirmation safely)
   useEffect(() => {
     if (isOpen) {
       setFormError('');
+      const hash = window.location.hash || '';
+      if (hash.includes('step=success') || hash.includes('confirmation')) {
+        try {
+          const saved = sessionStorage.getItem('cartiva_latest_confirmed_order');
+          if (saved) {
+            setConfirmedOrder(JSON.parse(saved));
+            setStep('success');
+            return;
+          }
+        } catch {}
+      }
       if (step === 'success' && !confirmedOrder) {
         setStep('checkout');
       }
@@ -144,6 +162,9 @@ export const CheckoutModal = ({ isOpen, onClose, onOrderPlaced, onNavigateToAcco
 
       if (res.success && res.order) {
         setConfirmedOrder(res.order);
+        try {
+          sessionStorage.setItem('cartiva_latest_confirmed_order', JSON.stringify(res.order));
+        } catch {}
         setStep('success');
         clearCart();
         addToast(`Order ${res.order.orderReference} confirmed!`, 'success');

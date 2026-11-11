@@ -46,7 +46,7 @@ const AppContent = () => {
   const getHashInfo = () => {
     const raw = window.location.hash.replace(/^#\/?/, '');
     const [viewPart, queryPart] = raw.split('?');
-    const validViews = ['home', 'catalogue', 'product-detail', 'wishlist', 'collections', 'artisans', 'storefront', 'offers', 'account', 'checkout'];
+    const validViews = ['home', 'catalogue', 'product-detail', 'wishlist', 'collections', 'artisans', 'storefront', 'offers', 'account', 'checkout', 'seller-dashboard', 'seller'];
     const view = validViews.includes(viewPart) ? viewPart : 'home';
     const params = new URLSearchParams(queryPart || '');
     const id = params.get('id');
@@ -536,11 +536,13 @@ const AppContent = () => {
           />
         )}
 
-        {/* VIEW: MY ACCOUNT & ORDERS */}
-        {currentView === 'account' && (
+        {/* VIEW: MY ACCOUNT, ORDERS & SELLER DASHBOARD */}
+        {(currentView === 'account' || currentView === 'seller-dashboard' || currentView === 'seller') && (
           <AccountOrdersPage
+            initialTab={currentView.startsWith('seller') ? 'seller-portal' : 'orders'}
             onBack={() => handleNavigate('home')}
             onExploreCatalogue={() => handleNavigate('catalogue')}
+            onNavigateToStorefront={handleNavigateToStorefront}
           />
         )}
       </main>

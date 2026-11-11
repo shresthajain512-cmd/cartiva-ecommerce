@@ -123,6 +123,32 @@ const createOrder = async (req, res) => {
       sanitizedItems.push({ productId: productId.toString(), quantity });
     }
 
+    // 3.5. Duplicate submission guard: prevent duplicate orders submitted within 15 seconds by the same customer
+    const recentDuplicate = await Order.findOne({
+      user: req.user._id,
+      createdAt: { $gte: new Date(Date.now() - 15000) }
+    }).sort({ createdAt: -1 });
+
+    if (recentDuplicate) {
+      const isIdentical =
+        recentDuplicate.orderItems.length === sanitizedItems.length &&
+        recentDuplicate.orderItems.every((item) => {
+          const match = sanitizedItems.find(
+            (san) => san.productId === item.product.toString() && san.quantity === item.quantity
+          );
+          return Boolean(match);
+        });
+
+      if (isIdentical) {
+        return res.status(409).json({
+          success: false,
+          message: 'Duplicate order submission detected. Your order has already been received.',
+          orderReference: recentDuplicate.orderReference,
+          order: recentDuplicate
+        });
+      }
+    }
+
     // 4. Fetch live products from database (never trust client prices or stock)
     const productIds = sanitizedItems.map((item) => item.productId);
     const dbProducts = await Product.find({ _id: { $in: productIds } }).populate(
@@ -490,9 +516,25 @@ const getSellerOrders = async (req, res) => {
       };
     });
 
+    // Calculate verified seller overview metrics strictly from database records
+    const stats = {
+      totalOrders: isolatedOrders.length,
+      pendingOrders: isolatedOrders.filter((o) => o.orderStatus === 'Placed').length,
+      processingOrders: isolatedOrders.filter((o) => o.orderStatus === 'Processing').length,
+      shippedOrders: isolatedOrders.filter((o) => o.orderStatus === 'Shipped').length,
+      deliveredOrders: isolatedOrders.filter((o) => o.orderStatus === 'Delivered').length,
+      shippedOrDeliveredOrders: isolatedOrders.filter((o) =>
+        ['Shipped', 'Delivered'].includes(o.orderStatus)
+      ).length,
+      totalSales: isolatedOrders
+        .filter((o) => o.orderStatus !== 'Cancelled')
+        .reduce((sum, o) => sum + (o.total || 0), 0)
+    };
+
     res.status(200).json({
       success: true,
       count: isolatedOrders.length,
+      stats,
       orders: isolatedOrders
     });
   } catch (error) {
@@ -582,16 +624,46 @@ const updateOrderStatus = async (req, res) => {
         });
       }
 
+      const currentStatus = sellerGroup.status || 'Placed';
+
+      // Server-side status transition state machine for artisan studios
+      const ALLOWED_SELLER_TRANSITIONS = {
+        Placed: ['Processing', 'Cancelled'],
+        Processing: ['Shipped', 'Cancelled'],
+        Shipped: ['Delivered'],
+        Delivered: [],
+        Cancelled: []
+      };
+
+      if (currentStatus === orderStatus) {
+        return res.status(200).json({
+          success: true,
+          message: `Sub-order is already marked as ${orderStatus}`,
+          sellerGroup
+        });
+      }
+
+      const permitted = ALLOWED_SELLER_TRANSITIONS[currentStatus] || [];
+      if (!permitted.includes(orderStatus)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid status transition from "${currentStatus}" to "${orderStatus}". Permitted next statuses: ${permitted.length > 0 ? permitted.join(', ') : 'None (terminal state)'}`
+        });
+      }
+
       sellerGroup.status = orderStatus;
 
       // If all seller groups are Shipped/Delivered, update top-level status
       const allDelivered = order.sellerGroups.every((g) => g.status === 'Delivered');
       const allShipped = order.sellerGroups.every((g) => ['Shipped', 'Delivered'].includes(g.status));
+      const allCancelled = order.sellerGroups.every((g) => g.status === 'Cancelled');
 
       if (allDelivered) {
         order.orderStatus = 'Delivered';
       } else if (allShipped) {
         order.orderStatus = 'Shipped';
+      } else if (allCancelled) {
+        order.orderStatus = 'Cancelled';
       } else {
         order.orderStatus = 'Processing';
       }

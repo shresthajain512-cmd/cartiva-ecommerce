@@ -555,6 +555,68 @@ const runDay11TestSuite = async () => {
       'Test 20: Admin can view all marketplace orders and update status (HTTP 200)'
     );
 
+    // -------------------------------------------------------------
+    // SECTION G: UNAUTHORIZED & DUPLICATE SUBMISSION DEFENSE
+    // -------------------------------------------------------------
+    console.log('\n--- 🛑 SECTION G: UNAUTHORIZED & DUPLICATE DEFENSE ---');
+
+    // Test 21: Unauthorized order creation without Bearer token rejected
+    const res21 = await fetch(`${API_URL}/orders`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        items: [{ productId: prodAlpha._id, quantity: 1 }],
+        shippingAddress: {
+          fullName: 'Unauthenticated User',
+          phone: '+919876543210',
+          street: '12 Indiranagar',
+          city: 'Bengaluru',
+          state: 'Karnataka',
+          postalCode: '560038'
+        }
+      })
+    });
+    assert(
+      res21.status === 401,
+      'Test 21: Unauthorized order creation rejected without token (HTTP 401)'
+    );
+
+    // Test 22: Duplicate order submission prevention (same user, identical items within 15s)
+    const stockAlphaBeforeDup = (await Product.findById(prodAlpha._id)).stockCount;
+    const res22 = await fetch(`${API_URL}/orders`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${tokenCustomerA}`
+      },
+      body: JSON.stringify({
+        items: [
+          { productId: prodAlpha._id, quantity: 2 },
+          { productId: prodBeta._id, quantity: 1 }
+        ],
+        shippingAddress: {
+          fullName: 'Aditi Rao',
+          phone: '+919876543210',
+          street: '12 Indiranagar',
+          city: 'Bengaluru',
+          state: 'Karnataka',
+          postalCode: '560038'
+        },
+        paymentMethod: 'cod'
+      })
+    });
+    const data22 = await res22.json();
+    const stockAlphaAfterDup = (await Product.findById(prodAlpha._id)).stockCount;
+
+    assert(
+      res22.status === 409 &&
+      data22.success === false &&
+      stockAlphaAfterDup === stockAlphaBeforeDup,
+      'Test 22: Duplicate order submission prevented with HTTP 409 & zero stock re-decrement'
+    );
+
     // Final summary
     console.log('\n========================================================================');
     console.log(`📊 DAY 11 TEST SUITE SUMMARY: ${passed}/${passed + failed} Passed (${Math.round((passed / (passed + failed)) * 100)}%)`);
