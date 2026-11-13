@@ -174,7 +174,7 @@ const AppContent = () => {
     } catch (err) {
       console.error('Catalogue fetch error:', err);
       setError(
-        'Unable to connect to the Cartiva backend server. Please verify the server is running on http://localhost:5001'
+        'Unable to connect to Cartiva marketplace services. Please verify your connection or try again shortly.'
       );
     } finally {
       setLoading(false);

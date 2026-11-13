@@ -12,6 +12,14 @@ const notFound = (req, res, next) => {
  * Catches all forwarded errors and formats them into a standardized JSON response
  */
 const errorHandler = (err, req, res, next) => {
+  // Deliberate HTTP 403 response for unauthorized cross-origin requests
+  if (err.isCors || (err.message && err.message.startsWith('CORS policy:'))) {
+    return res.status(403).json({
+      success: false,
+      message: 'Access denied: Cross-origin request not authorized by security policy.'
+    });
+  }
+
   const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
 
   res.status(statusCode).json({

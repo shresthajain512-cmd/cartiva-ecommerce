@@ -1287,6 +1287,20 @@ const seedProducts = [
 ];
 
 async function seedDatabase() {
+  // Production Safety Guard: Database seeding is strictly blocked by default in production.
+  // To prevent accidental resets caused by persistent cloud environment variables,
+  // production execution requires an explicit, deliberate CLI flag: --confirm-production-seed
+  if (process.env.NODE_ENV === 'production') {
+    const hasExplicitCliFlag = process.argv.includes('--confirm-production-seed');
+    if (!hasExplicitCliFlag) {
+      console.error('\n🛑 BLOCKED: Database seeding is prohibited in production (NODE_ENV=production).');
+      console.error('To prevent accidental data corruption, persistent environment flags are disabled.');
+      console.error('If you deliberately need to initialize an empty production database, execute:');
+      console.error('  NODE_ENV=production node seedData.js --confirm-production-seed\n');
+      process.exit(1);
+    }
+  }
+
   try {
     const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/cartiva';
     await mongoose.connect(mongoUri);

@@ -1,9 +1,19 @@
 /**
  * Cartiva API Service
- * Communicates with the Express & MongoDB backend on http://localhost:5001
+ * Communicates with the Express & MongoDB backend
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+// Production requires an explicit VITE_API_URL. In development, defaults to local port 5001.
+const rawApiUrl = import.meta.env.VITE_API_URL;
+const API_BASE_URL = rawApiUrl
+  ? rawApiUrl.replace(/\/+$/, '')
+  : (import.meta.env.DEV ? 'http://localhost:5001' : '');
+
+if (!import.meta.env.DEV && !rawApiUrl) {
+  console.error(
+    'CRITICAL CONFIGURATION ERROR: VITE_API_URL is missing in production environment. API requests will fail.'
+  );
+}
 
 /**
  * Fetch public catalogue products with optional filters, search, sorting, and pagination

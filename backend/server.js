@@ -12,7 +12,42 @@ const app = express();
 
 // 3. Essential Middlewares
 app.use(express.json()); // Parses incoming JSON payloads
-app.use(cors());         // Enables Cross-Origin Resource Sharing for frontend
+
+// Enhanced Production-Ready CORS Configuration
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  process.env.FRONTEND_URL || 'https://cartiva-ecommerce.vercel.app',
+  ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()) : [])
+].filter(Boolean);
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // 1. Allow non-browser requests (curl, server-to-server, automated test suites with no origin)
+    if (!origin) return callback(null, true);
+
+    // 2. Exact match against configured environment whitelist (production Vercel domain & approved origins)
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    // 3. In development mode only, allow localhost origins on any port
+    if (process.env.NODE_ENV !== 'production' && /^http:\/\/localhost(:\d+)?$/.test(origin)) {
+      return callback(null, true);
+    }
+
+    // 4. Reject unauthorized browser origins with deliberate CORS policy error
+    const corsError = new Error('CORS policy: Request origin not authorized.');
+    corsError.isCors = true;
+    return callback(corsError);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
 
 // 4. Connect to Database (asynchronous, non-blocking)
 connectDB();
@@ -37,16 +72,20 @@ app.get('/health', (req, res) => {
     3: 'disconnecting'
   };
   const dbState = mongoose.connection.readyState;
+  const isConnected = dbState === 1;
+  const statusCode = isConnected ? 200 : 503;
 
-  res.status(200).json({
-    status: 'ok',
-    message: 'Cartiva Backend Server is running healthy 🚀',
+  res.status(statusCode).json({
+    status: isConnected ? 'ok' : 'degraded',
+    message: isConnected
+      ? 'Cartiva Backend Server is running healthy 🚀'
+      : 'Cartiva Backend Server is degraded: Database connection is unavailable',
     timestamp: new Date().toISOString(),
     uptime: `${Math.floor(process.uptime())}s`,
     environment: process.env.NODE_ENV || 'development',
     database: {
       status: dbStatusMap[dbState] || 'unknown',
-      connected: dbState === 1
+      connected: isConnected
     }
   });
 });
