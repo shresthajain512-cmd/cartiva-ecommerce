@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   ShieldCheck,
@@ -20,7 +20,39 @@ import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import { createOrderApi } from '../services/api';
 
-export const CheckoutModal = ({ isOpen, onClose, onOrderPlaced, onNavigateToAccount, onBrowseCatalogue }) => {
+const getCleanFormData = (currentUser = null) => ({
+  name: currentUser?.name || '',
+  email: currentUser?.email || '',
+  password: '',
+  phone: '',
+  address: '',
+  city: '',
+  state: '',
+  pincode: '',
+  country: 'India'
+});
+
+const extractSavedUserId = (parsed) => {
+  if (!parsed || typeof parsed !== 'object') return null;
+  const rawId =
+    parsed._userId ||
+    (parsed.user && typeof parsed.user === 'object'
+      ? parsed.user.id || parsed.user._id
+      : parsed.user) ||
+    null;
+  if (!rawId) return null;
+  const strId = String(rawId).trim();
+  return strId.length > 0 ? strId : null;
+};
+
+export const CheckoutModal = ({
+  isOpen,
+  onClose,
+  onOrderPlaced,
+  onNavigateToAccount,
+  onBrowseCatalogue,
+  onOpenAuthModal
+}) => {
   const { items, subtotal, shippingFee, grandTotal, groupedBySeller, clearCart } = useCart();
   const { addToast } = useToast();
   const { user, token, ensureAuthenticatedSession } = useAuth();
@@ -29,7 +61,14 @@ export const CheckoutModal = ({ isOpen, onClose, onOrderPlaced, onNavigateToAcco
   const [confirmedOrder, setConfirmedOrder] = useState(() => {
     try {
       const saved = sessionStorage.getItem('cartiva_latest_confirmed_order');
-      return saved ? JSON.parse(saved) : null;
+      if (!saved) return null;
+      const parsed = JSON.parse(saved);
+      const savedUserId = extractSavedUserId(parsed);
+      const currentUserId = user?.id ? String(user.id).trim() : null;
+      if (savedUserId && currentUserId && savedUserId === currentUserId) {
+        return parsed;
+      }
+      return null;
     } catch {
       return null;
     }
@@ -37,51 +76,145 @@ export const CheckoutModal = ({ isOpen, onClose, onOrderPlaced, onNavigateToAcco
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const [formData, setFormData] = useState({
-    name: user?.name || 'Shrestha Jain',
-    email: user?.email || 'shrestha@example.com',
-    password: '',
-    phone: '+91 98765 43210',
-    address: '402, Lotus Courtyard, 100ft Road',
-    city: 'Bengaluru',
-    state: 'Karnataka',
-    pincode: '560038',
-    country: 'India'
-  });
+  const [formData, setFormData] = useState(() => getCleanFormData(user));
+  const previousUserIdRef = useRef(user?.id ? String(user.id).trim() : null);
+  const previouslyFocusedElementRef = useRef(null);
+  const firstInputRef = useRef(null);
 
   const [paymentMethod, setPaymentMethod] = useState('cod'); // 'cod' | 'mock_card' | 'mock_upi'
 
-  // Update name/email if user logs in
+  // Handle user authentication transitions (login, account switch, logout)
   useEffect(() => {
-    if (user) {
+    const currentId = user?.id ? String(user.id).trim() : null;
+    const prevId = previousUserIdRef.current;
+
+    if (currentId !== prevId) {
+      const isLogout = Boolean(prevId && !currentId);
+      const isAccountSwitch = Boolean(prevId && currentId && prevId !== currentId);
+      const isGuestToAuth = Boolean(!prevId && currentId);
+
+      previousUserIdRef.current = currentId;
+
+      if (isLogout) {
+        // Authenticated user logged out: purge all personal, delivery, password fields, and order state
+        setFormData(getCleanFormData(null));
+        setConfirmedOrder(null);
+        try {
+          sessionStorage.removeItem('cartiva_latest_confirmed_order');
+        } catch {}
+        if (step === 'success') {
+          setStep('checkout');
+        }
+      } else if (isAccountSwitch) {
+        // Switched from User A to User B: reset form to new user and purge previous user's order state
+        setFormData(getCleanFormData(user));
+        setConfirmedOrder(null);
+        try {
+          sessionStorage.removeItem('cartiva_latest_confirmed_order');
+        } catch {}
+        if (step === 'success') {
+          setStep('checkout');
+        }
+      } else if (isGuestToAuth) {
+        // Guest transitioned to authenticated (via sign-in or checkout registration):
+        // Sync user identity fields without destroying an order placed in this flow
+        setFormData((prev) => ({
+          ...prev,
+          name: user.name || prev.name,
+          email: user.email || prev.email,
+          password: ''
+        }));
+      }
+    } else if (user) {
+      // Same user profile updated: sync name/email, ensure password remains empty
       setFormData((prev) => ({
         ...prev,
         name: user.name || prev.name,
-        email: user.email || prev.email
+        email: user.email || prev.email,
+        password: ''
+      }));
+    } else {
+      // Unauthenticated visitor: ensure password is empty
+      setFormData((prev) => ({
+        ...prev,
+        password: ''
       }));
     }
-  }, [user]);
+  }, [user, step]);
 
-  // Reset or restore step when modal opens (supports reopening confirmation safely)
+  // Reset or restore step when modal opens
   useEffect(() => {
     if (isOpen) {
       setFormError('');
+      // Clear password on every modal open
+      setFormData((prev) => ({ ...prev, password: '' }));
+
       const hash = window.location.hash || '';
       if (hash.includes('step=success') || hash.includes('confirmation')) {
         try {
           const saved = sessionStorage.getItem('cartiva_latest_confirmed_order');
           if (saved) {
-            setConfirmedOrder(JSON.parse(saved));
-            setStep('success');
-            return;
+            const parsed = JSON.parse(saved);
+            const savedUserId = extractSavedUserId(parsed);
+            const currentUserId = user?.id ? String(user.id).trim() : null;
+            if (savedUserId && currentUserId && savedUserId === currentUserId) {
+              setConfirmedOrder(parsed);
+              setStep('success');
+              return;
+            } else {
+              setConfirmedOrder(null);
+              try {
+                sessionStorage.removeItem('cartiva_latest_confirmed_order');
+              } catch {}
+            }
           }
-        } catch {}
+        } catch {
+          setConfirmedOrder(null);
+          try {
+            sessionStorage.removeItem('cartiva_latest_confirmed_order');
+          } catch {}
+        }
       }
       if (step === 'success' && !confirmedOrder) {
         setStep('checkout');
       }
     }
-  }, [isOpen]);
+  }, [isOpen, user]);
+
+  // Keyboard Escape dismissal, initial focus, and focus restoration
+  useEffect(() => {
+    if (!isOpen) return;
+
+    previouslyFocusedElementRef.current = document.activeElement;
+
+    const timer = setTimeout(() => {
+      if (firstInputRef.current) {
+        firstInputRef.current.focus();
+      }
+    }, 100);
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        // Safe dismissal: never close while order submission is in progress
+        if (!submitting) {
+          onClose();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('keydown', handleKeyDown);
+      if (
+        previouslyFocusedElementRef.current &&
+        typeof previouslyFocusedElementRef.current.focus === 'function'
+      ) {
+        previouslyFocusedElementRef.current.focus();
+      }
+    };
+  }, [isOpen, submitting, onClose]);
 
   if (!isOpen) return null;
 
@@ -161,9 +294,13 @@ export const CheckoutModal = ({ isOpen, onClose, onOrderPlaced, onNavigateToAcco
       const res = await createOrderApi(orderPayload, activeToken);
 
       if (res.success && res.order) {
-        setConfirmedOrder(res.order);
+        const orderRecord = {
+          ...res.order,
+          _userId: user?.id || res.order?.user || null
+        };
+        setConfirmedOrder(orderRecord);
         try {
-          sessionStorage.setItem('cartiva_latest_confirmed_order', JSON.stringify(res.order));
+          sessionStorage.setItem('cartiva_latest_confirmed_order', JSON.stringify(orderRecord));
         } catch {}
         setStep('success');
         clearCart();
@@ -184,7 +321,10 @@ export const CheckoutModal = ({ isOpen, onClose, onOrderPlaced, onNavigateToAcco
   };
 
   return (
-    <div className="modal-backdrop" onClick={step === 'success' ? onClose : undefined}>
+    <div
+      className="modal-backdrop"
+      onClick={!submitting && step === 'success' ? onClose : undefined}
+    >
       <div
         className="checkout-modal-content"
         onClick={(e) => e.stopPropagation()}
@@ -205,7 +345,8 @@ export const CheckoutModal = ({ isOpen, onClose, onOrderPlaced, onNavigateToAcco
           <button
             type="button"
             className="modal-close-btn"
-            onClick={onClose}
+            onClick={submitting ? undefined : onClose}
+            disabled={submitting}
             aria-label="Close checkout"
           >
             <X size={20} />
@@ -244,10 +385,11 @@ export const CheckoutModal = ({ isOpen, onClose, onOrderPlaced, onNavigateToAcco
                   <div className="field-group span-2">
                     <label htmlFor="chk-name">Full Recipient Name *</label>
                     <input
+                      ref={firstInputRef}
                       id="chk-name"
                       type="text"
                       required
-                      placeholder="e.g. Shrestha Jain"
+                      placeholder="Full legal recipient name"
                       value={formData.name}
                       onChange={(e) => handleInputChange('name', e.target.value)}
                     />
@@ -267,12 +409,26 @@ export const CheckoutModal = ({ isOpen, onClose, onOrderPlaced, onNavigateToAcco
 
                   {!token && (
                     <div className="field-group">
-                      <label htmlFor="chk-password">Account Password *</label>
+                      <div className="field-label-row-auth">
+                        <label htmlFor="chk-password">Account Password *</label>
+                        {onOpenAuthModal && (
+                          <button
+                            type="button"
+                            className="btn-link-sign-in"
+                            onClick={() => {
+                              onClose();
+                              onOpenAuthModal({ returnTo: 'checkout' });
+                            }}
+                          >
+                            Have an account? Sign In
+                          </button>
+                        )}
+                      </div>
                       <input
                         id="chk-password"
                         type="password"
                         required
-                        placeholder="Min 6 characters to sign in/register"
+                        placeholder="At least 6 characters to secure your account"
                         value={formData.password}
                         onChange={(e) => handleInputChange('password', e.target.value)}
                       />
@@ -285,7 +441,7 @@ export const CheckoutModal = ({ isOpen, onClose, onOrderPlaced, onNavigateToAcco
                       id="chk-phone"
                       type="tel"
                       required
-                      placeholder="+91 98765 43210"
+                      placeholder="10-digit mobile number"
                       value={formData.phone}
                       onChange={(e) => handleInputChange('phone', e.target.value)}
                     />
@@ -297,7 +453,7 @@ export const CheckoutModal = ({ isOpen, onClose, onOrderPlaced, onNavigateToAcco
                       id="chk-street"
                       type="text"
                       required
-                      placeholder="Flat/House No., Building Name, Street"
+                      placeholder="Building, flat/suite, and street address"
                       value={formData.address}
                       onChange={(e) => handleInputChange('address', e.target.value)}
                     />
@@ -309,7 +465,7 @@ export const CheckoutModal = ({ isOpen, onClose, onOrderPlaced, onNavigateToAcco
                       id="chk-city"
                       type="text"
                       required
-                      placeholder="Bengaluru"
+                      placeholder="City name (e.g. Bengaluru, Mumbai, Delhi)"
                       value={formData.city}
                       onChange={(e) => handleInputChange('city', e.target.value)}
                     />
@@ -321,7 +477,7 @@ export const CheckoutModal = ({ isOpen, onClose, onOrderPlaced, onNavigateToAcco
                       id="chk-state"
                       type="text"
                       required
-                      placeholder="Karnataka"
+                      placeholder="State / Province (e.g. Karnataka, Maharashtra)"
                       value={formData.state}
                       onChange={(e) => handleInputChange('state', e.target.value)}
                     />
@@ -334,7 +490,7 @@ export const CheckoutModal = ({ isOpen, onClose, onOrderPlaced, onNavigateToAcco
                       type="text"
                       required
                       maxLength={10}
-                      placeholder="560038"
+                      placeholder="6-digit postal code / PIN code"
                       value={formData.pincode}
                       onChange={(e) => handleInputChange('pincode', e.target.value)}
                     />

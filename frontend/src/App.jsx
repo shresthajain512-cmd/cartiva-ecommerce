@@ -38,6 +38,7 @@ import { AIAssistantModal } from './components/AIAssistantModal';
 import { CheckoutModal } from './components/CheckoutModal';
 import { InfoModal } from './components/InfoModal';
 import { CartDrawer } from './components/CartDrawer';
+import { AuthModal } from './components/AuthModal';
 
 // API Services
 import { fetchProducts, fetchCategories } from './services/api';
@@ -107,6 +108,8 @@ const AppContent = () => {
   const [isStyleFinderOpen, setIsStyleFinderOpen] = useState(false);
   const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authReturnTo, setAuthReturnTo] = useState(null);
   const [activeInfoModalKey, setActiveInfoModalKey] = useState(null);
 
   // 1. Fetch Categories and Master Products once on mount
@@ -361,6 +364,10 @@ const AppContent = () => {
         onOpenGiftFinder={() => setIsGiftFinderOpen(true)}
         onOpenStyleFinder={() => setIsStyleFinderOpen(true)}
         onOpenAIAssistant={() => setIsAIAssistantOpen(true)}
+        onOpenAuthModal={() => {
+          setAuthReturnTo(null);
+          setIsAuthModalOpen(true);
+        }}
         allProducts={allProducts}
         onInspectProduct={handleViewFullDetails}
       />
@@ -596,6 +603,31 @@ const AppContent = () => {
         onOrderPlaced={() => handleNavigate('account')}
         onNavigateToAccount={() => handleNavigate('account')}
         onBrowseCatalogue={() => handleNavigate('catalogue')}
+        onOpenAuthModal={(options = {}) => {
+          setAuthReturnTo(options?.returnTo || 'checkout');
+          setIsAuthModalOpen(true);
+        }}
+      />
+
+      {/* Universal Authentication Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => {
+          setIsAuthModalOpen(false);
+          setAuthReturnTo(null);
+        }}
+        returnTo={authReturnTo}
+        onSuccess={(loggedUser, returnTarget) => {
+          setIsAuthModalOpen(false);
+          if (returnTarget === 'checkout' || authReturnTo === 'checkout') {
+            setAuthReturnTo(null);
+            setIsCheckoutOpen(true);
+          } else {
+            setAuthReturnTo(null);
+            handleNavigate('account');
+          }
+        }}
+        onNavigate={handleNavigate}
       />
 
       {/* 7. Footer Policy Modals */}

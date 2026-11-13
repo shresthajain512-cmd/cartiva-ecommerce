@@ -29,13 +29,14 @@ export const Navbar = ({
   onOpenGiftFinder,
   onOpenStyleFinder,
   onOpenAIAssistant,
+  onOpenAuthModal,
   allProducts = [],
   onInspectProduct
 }) => {
   const { totalItems, toggleCart } = useCart();
   const { totalWishlist } = useWishlist();
   const { totalCompared, openCompareModal } = useComparison();
-  const { role } = useAuth();
+  const { role, user, isAuthenticated } = useAuth();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState(searchQuery || '');
@@ -93,6 +94,30 @@ export const Navbar = ({
               <Bot size={12} />
               <span>AI Assistant</span>
             </button>
+            {isAuthenticated ? (
+              <button
+                type="button"
+                className="top-bar-action-link"
+                onClick={() => onNavigate('account')}
+                title="View My Account & Orders"
+              >
+                <User size={12} />
+                <span>Hi, {user?.name ? user.name.split(' ')[0] : 'Account'}</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="top-bar-action-link"
+                onClick={() => {
+                  if (onOpenAuthModal) onOpenAuthModal();
+                  else onNavigate('account');
+                }}
+                title="Sign In or Register"
+              >
+                <User size={12} />
+                <span>Sign In / Register</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -194,16 +219,26 @@ export const Navbar = ({
               <span className="action-btn-tooltip">Wishlist</span>
             </button>
 
-            {/* My Account & Orders */}
+            {/* My Account & Orders / Authentication */}
             <button
               type="button"
               className={`icon-action-btn hide-on-mobile ${currentView === 'account' ? 'active' : ''}`}
-              onClick={() => onNavigate('account')}
-              title="My Account & Orders"
-              aria-label="My Account"
+              onClick={() => {
+                if (isAuthenticated) {
+                  onNavigate('account');
+                } else if (onOpenAuthModal) {
+                  onOpenAuthModal();
+                } else {
+                  onNavigate('account');
+                }
+              }}
+              title={isAuthenticated ? `My Account (${user?.name || 'Customer'})` : "Sign In / Register"}
+              aria-label={isAuthenticated ? "My Account" : "Sign In / Register"}
             >
               <User size={18} />
-              <span className="action-btn-tooltip">Account</span>
+              <span className="action-btn-tooltip">
+                {isAuthenticated ? (user?.name ? user.name.split(' ')[0] : 'Account') : 'Sign In'}
+              </span>
             </button>
 
             {/* Shopping Bag Button */}
@@ -381,17 +416,35 @@ export const Navbar = ({
                   <Scale size={15} />
                   <span>Compare Products ({totalCompared})</span>
                 </button>
-                <button
-                  type="button"
-                  className={`mobile-link ${currentView === 'account' ? 'active' : ''}`}
-                  onClick={() => {
-                    onNavigate('account');
-                    setMobileMenuOpen(false);
-                  }}
-                >
-                  <User size={15} />
-                  <span>My Account & Orders</span>
-                </button>
+                {isAuthenticated ? (
+                  <button
+                    type="button"
+                    className={`mobile-link ${currentView === 'account' ? 'active' : ''}`}
+                    onClick={() => {
+                      onNavigate('account');
+                      setMobileMenuOpen(false);
+                    }}
+                  >
+                    <User size={15} />
+                    <span>My Account ({user?.name ? user.name.split(' ')[0] : 'Orders'})</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="mobile-link"
+                    onClick={() => {
+                      if (onOpenAuthModal) {
+                        onOpenAuthModal();
+                      } else {
+                        onNavigate('account');
+                      }
+                      setMobileMenuOpen(false);
+                    }}
+                  >
+                    <User size={15} />
+                    <span>Sign In / Register</span>
+                  </button>
+                )}
 
                 {role === 'admin' && (
                   <button
