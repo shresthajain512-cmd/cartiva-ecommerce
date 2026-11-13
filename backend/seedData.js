@@ -245,7 +245,7 @@ const seedProducts = [
     "description": "Organize your charging bricks, styluses, cables, and dongles inside vegetable-tanned harness leather sleeves secured with custom brass button studs.",
     "price": 1899,
     "category": "Electronics",
-    "imageUrl": "https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=800&q=80",
+    "imageUrl": "https://images.unsplash.com/photo-1599917076769-2221191f45e7?auto=format&fit=crop&w=800&q=80",
     "stockCount": 40,
     "rating": 4.5,
     "reviewsCount": 17,
@@ -294,20 +294,19 @@ const seedProducts = [
     "description": "Eco-friendly washable kraft paper market tote featuring reinforced woven herringbone handles and an expandable gusset base.",
     "price": 2650,
     "category": "Fashion",
-    "imageUrl": "https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=800&q=80",
+    "imageUrl": "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=800&q=80",
     "stockCount": 19,
     "rating": 4.7,
     "reviewsCount": 36,
     "specs": {
-      "Canvas": "18oz Heavy Duck Waxed Canvas",
-      "Straps": "Bridle Leather with 24cm Drop",
-      "Pockets": "2 Exterior Slip Pockets, 1 Interior Zip",
-      "Care": "Wipe Clean with Damp Sponge"
+      "Material": "Washable Kraft Paper",
+      "Handles": "Reinforced Woven Herringbone",
+      "Base": "Expandable Gusset"
     },
     "tags": [
       "Tote",
-      "Canvas",
-      "Waxed",
+      "Kraft Paper",
+      "Washable",
       "Everyday Carry"
     ],
     "isFeatured": false,
@@ -441,21 +440,20 @@ const seedProducts = [
     "price": 4200,
     "originalPrice": 4950,
     "category": "Fashion",
-    "imageUrl": "https://images.unsplash.com/photo-1584030373081-f37b7bb4fa8e?auto=format&fit=crop&w=800&q=80",
+    "imageUrl": "https://images.unsplash.com/photo-1713881587420-113c1c43e28a?auto=format&fit=crop&w=800&q=80",
     "stockCount": 15,
     "rating": 4.9,
     "reviewsCount": 16,
     "specs": {
-      "Dimensions": "190cm x 50cm",
-      "Fiber": "100% Grade-A Mongolian Cashmere",
-      "Fringe": "Hand-Twisted 8cm Eyelash Fringe",
-      "Weight": "180g Ultra-Soft Plaid"
+      "Material": "100% Washed Linen",
+      "Neckline": "Boatneck",
+      "Style": "Relaxed Tunic"
     },
     "tags": [
-      "Cashmere",
-      "Scarf",
-      "Luxury",
-      "Handwoven"
+      "Linen",
+      "Tunic",
+      "Boatneck",
+      "Apparel"
     ],
     "isFeatured": false,
     "sellerBusinessName": "Nomad Leather Atelier"
@@ -612,21 +610,20 @@ const seedProducts = [
     "price": 3150,
     "originalPrice": 3800,
     "category": "Home & Kitchen",
-    "imageUrl": "https://images.unsplash.com/photo-1570968915860-54d5c301fa9f?auto=format&fit=crop&w=800&q=80",
+    "imageUrl": "https://images.unsplash.com/photo-1517256064527-09c73fc73e38?auto=format&fit=crop&w=800&q=80",
     "stockCount": 17,
     "rating": 4.7,
     "reviewsCount": 33,
     "specs": {
-      "Volume": "900ml",
-      "Spout": "Curved 8mm Precision Restrictor",
-      "Material": "304 Food-Grade Stainless Steel",
-      "Lid": "Built-In Dial Thermometer Gauge"
+      "Material": "Borosilicate Glass",
+      "Construction": "Double-Wall Insulated",
+      "Type": "Latte Tumbler"
     },
     "tags": [
-      "Kettle",
-      "Coffee",
-      "Gooseneck",
-      "Barista"
+      "Glassware",
+      "Tumbler",
+      "Double Wall",
+      "Coffee"
     ],
     "isFeatured": false,
     "sellerBusinessName": "Terra Stoneware Studio"
@@ -660,21 +657,21 @@ const seedProducts = [
     "description": "Set of earthy stoneware tumblers featuring raw unglazed terracotta bases and dipped matte cream glazes.",
     "price": 1990,
     "category": "Home & Kitchen",
-    "imageUrl": "https://images.unsplash.com/photo-1610701596007-11502861dcfa?auto=format&fit=crop&w=800&q=80",
+    "imageUrl": "https://images.unsplash.com/photo-1570748168721-35a6685169b4?auto=format&fit=crop&w=800&q=80",
     "stockCount": 15,
     "rating": 4.8,
     "reviewsCount": 28,
     "specs": {
-      "Diameter": "20.5cm, Depth: 8.5cm",
-      "Capacity": "1100ml each",
-      "Quantity": "Pair (2 Bowls)",
-      "Firing": "Reduction Atmosphere Stoneware"
+      "Material": "Stoneware Ceramic",
+      "Base": "Raw Unglazed Terracotta",
+      "Glaze": "Dipped Matte Cream",
+      "Set Type": "Tumbler Set"
     },
     "tags": [
-      "Bowls",
       "Ceramics",
-      "Ramen",
-      "Dinnerware"
+      "Stoneware",
+      "Tumbler",
+      "Tableware"
     ],
     "isFeatured": false,
     "sellerBusinessName": "Terra Stoneware Studio"
@@ -951,7 +948,7 @@ const seedProducts = [
     "description": "Constructed from fine-grain compressed cork bark offering solid structural support, rounded comfort bevels, and slip-free grip under high weight loads.",
     "price": 1150,
     "category": "Fitness",
-    "imageUrl": "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=800&q=80",
+    "imageUrl": "https://images.unsplash.com/photo-1646239646963-b0b9be56d6b5?auto=format&fit=crop&w=800&q=80",
     "stockCount": 30,
     "rating": 4.7,
     "reviewsCount": 42,
@@ -1030,8 +1027,8 @@ const seedProducts = [
     "reviewsCount": 26,
     "specs": {
       "Dimensions": "33cm x 14cm",
-      "Core": "Reinforced ABS Rigid Core (Holds up to 200kg)",
-      "Surface": "Multi-Density EVA Distrodensity Zones",
+      "Core": "Hollow PVC Core",
+      "Surface": "High-Density EVA Foam",
       "Weight": "820g"
     },
     "tags": [
@@ -1217,12 +1214,12 @@ const seedProducts = [
     "description": "Handmade miniature hand brush crafted from oiled European beechwood and dense split horsehair bristles. Gently sweeps keyboard crumbs, eraser shavings, and desktop grit.",
     "price": 790,
     "category": "Other",
-    "imageUrl": "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=800&q=80",
+    "imageUrl": "https://images.unsplash.com/photo-1584794171575-a5dc95dc2250?auto=format&fit=crop&w=800&q=80",
     "stockCount": 33,
     "rating": 4.5,
     "reviewsCount": 18,
     "specs": {
-      "Wood": "FSC Certified Oiled Beechwood",
+      "Wood": "Oiled Beechwood",
       "Bristles": "Natural Split Horsehair",
       "Dimensions": "14cm x 8cm x 2cm",
       "Cord": "Vegetable-Tanned Leather Hanging Loop"
@@ -1247,7 +1244,7 @@ const seedProducts = [
     "reviewsCount": 22,
     "specs": {
       "Length": "18cm / 7 inches",
-      "Material": "Solid C360 Brass",
+      "Material": "Solid Brass",
       "Scales": "1:1, 1:20, 1:50, 1:100 Laser Etched",
       "Weight": "165g"
     },
@@ -1299,12 +1296,64 @@ async function seedDatabase() {
       console.error('  NODE_ENV=production node seedData.js --confirm-production-seed\n');
       process.exit(1);
     }
+
+    // Production Target Safeguards:
+    // 1. MONGO_URI must be explicitly supplied
+    let rawCheckUri = process.env.MONGO_URI;
+    if (typeof rawCheckUri === 'string') {
+      rawCheckUri = rawCheckUri.trim();
+      if ((rawCheckUri.startsWith('"') && rawCheckUri.endsWith('"')) || (rawCheckUri.startsWith("'") && rawCheckUri.endsWith("'"))) {
+        rawCheckUri = rawCheckUri.slice(1, -1).trim();
+      }
+    }
+
+    if (!rawCheckUri) {
+      console.error('\n🛑 BLOCKED: In production mode, MONGO_URI must be explicitly provided.');
+      console.error('To prevent accidental localhost corruption, falling back to localhost is prohibited in production.\n');
+      process.exit(1);
+    }
+
+    // 2. Validate MongoDB connection URI scheme
+    if (!rawCheckUri.startsWith('mongodb://') && !rawCheckUri.startsWith('mongodb+srv://')) {
+      console.error('\n🛑 BLOCKED: Invalid MongoDB URI scheme. Must start with "mongodb://" or "mongodb+srv://".\n');
+      process.exit(1);
+    }
+
+    // 3. Extract and verify Atlas host strictly (without logging or exposing credentials)
+    const atIndex = rawCheckUri.indexOf('@');
+    if (atIndex === -1) {
+      console.error('\n🛑 BLOCKED: Invalid MongoDB Atlas URI format (missing credentials/host separator "@").\n');
+      process.exit(1);
+    }
+
+    const hostPart = rawCheckUri.slice(atIndex + 1).split('/')[0].split('?')[0].split(':')[0].toLowerCase();
+    const EXPECTED_ATLAS_HOST = 'shresthajain.3kflxyt.mongodb.net';
+
+    if (hostPart !== EXPECTED_ATLAS_HOST) {
+      console.error('\n🛑 BLOCKED: Production seeding is strictly restricted to the verified Cartiva Atlas cluster:');
+      console.error(`  Expected: ${EXPECTED_ATLAS_HOST}`);
+      console.error(`  Received: ${hostPart}`);
+      console.error('Seeding operation aborted to protect environment integrity.\n');
+      process.exit(1);
+    }
   }
 
   try {
-    const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/cartiva';
-    await mongoose.connect(mongoUri);
-    console.log('Connected to MongoDB for seeding.');
+    let rawUri = process.env.MONGO_URI;
+    if (typeof rawUri === 'string') {
+      rawUri = rawUri.trim();
+      if ((rawUri.startsWith('"') && rawUri.endsWith('"')) || (rawUri.startsWith("'") && rawUri.endsWith("'"))) {
+        rawUri = rawUri.slice(1, -1).trim();
+      }
+    }
+    const mongoUri = rawUri || 'mongodb://localhost:27017/cartiva';
+
+    // Production Target Safeguard 3: Explicitly enforce dbName: 'cartiva' and timeout
+    const conn = await mongoose.connect(mongoUri, {
+      dbName: 'cartiva',
+      serverSelectionTimeoutMS: 5000
+    });
+    console.log(`✅ Connected to MongoDB for seeding: ${conn.connection.host} (Database: ${conn.connection.name || 'cartiva'})`);
 
     for (const u of seedUsers) {
       let existingUser = await User.findOne({ email: u.email });

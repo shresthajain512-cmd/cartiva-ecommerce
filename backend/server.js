@@ -17,6 +17,7 @@ app.use(express.json()); // Parses incoming JSON payloads
 const allowedOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
+  'https://cartiva-ecommerce-theta.vercel.app',
   process.env.FRONTEND_URL || 'https://cartiva-ecommerce.vercel.app',
   ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()) : [])
 ].filter(Boolean);
